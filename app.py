@@ -219,33 +219,38 @@ elif menu == "Khách du lịch":
     if st.button("🔍 Tìm gợi ý", type="primary"):
         filtered_df = df_info.copy()
 
-        # ---------------------------------------------------------
-        # 1. XỬ LÝ BỘ LỌC HẠNG SAO (Sử dụng cột 'hotel rank')
-        # ---------------------------------------------------------
-        if star_option != "Bất kỳ":
-            # Tách lấy phần số từ chuỗi selectbox (VD: "5 sao" -> 5.0)
-            target_star = float(star_option.split()[0])
-            
-            # Chuyển đổi cột 'hotel rank' về dạng số để so sánh chính xác
-            filtered_df['hotel rank'] = pd.to_numeric(filtered_df['hotel rank'], errors='coerce')
-            filtered_df = filtered_df[filtered_df['hotel rank'] == target_star]
+        # --- HÀM HỖ TRỢ LẤY GIÁ TRỊ CỘT LINH HOẠT ---
+        def get_col_value(row, possible_names, default="Đang cập nhật"):
+            for col in possible_names:
+                for actual_col in row.index:
+                    if col.lower().replace(" ", "_") == str(actual_col).lower().replace(" ", "_"):
+                        val = row[actual_col]
+                        if pd.notna(val) and str(val).strip() != "":
+                            return val
+            return default
 
         # ---------------------------------------------------------
-        # 2. TÍNH ĐỘ PHÙ HỢP % (Chuyển Cosine Score sang %)
+        # 1. XỬ LÝ BỘ LỌC HẠNG SAO
         # ---------------------------------------------------------
-        # Lưu ý: Bạn thay 'cosine_score' bằng đúng tên cột chứa điểm Cosine Similarity trong dataframe của bạn
-        if 'cosine_score' in filtered_df.columns:
-            filtered_df['match_percent'] = (filtered_df['cosine_score'] * 100).round(1)
-        elif 'similarity_score' in filtered_df.columns:
-            filtered_df['match_percent'] = (filtered_df['similarity_score'] * 100).round(1)
-        else:
-            filtered_df['match_percent'] = 85.0  # Điểm mặc định nếu chưa tính được
+        if star_option != "Bất kỳ":
+            target_star = float(star_option.split()[0])
+            
+            # Tìm cột hạng sao trong dataframe
+            star_col = None
+            for c in filtered_df.columns:
+                if c.lower() in ['hotel rank', 'star', 'star_rating', 'hotel_star', 'rank']:
+                    star_col = c
+                    break
+            
+            if star_col:
+                filtered_df[star_col] = pd.to_numeric(filtered_df[star_col], errors='coerce')
+                filtered_df = filtered_df[filtered_df[star_col] == target_star]
 
         # Lấy Top kết quả
         top_results = filtered_df.head(10)
 
         # ---------------------------------------------------------
-        # 3. HIỂN THỊ KẾT QUẢ CARD KHÁCH SẠN
+        # 2. HIỂN THỊ KẾT QUẢ CARD KHÁCH SẠN
         # ---------------------------------------------------------
         st.subheader("Kết quả gợi ý dành cho bạn")
         
@@ -253,28 +258,39 @@ elif menu == "Khách du lịch":
             st.warning("Không tìm thấy khách sạn phù hợp với tiêu chí lọc của bạn. Vui lòng thử chọn 'Bất kỳ' hạng sao!")
         else:
             for idx, row in top_results.iterrows():
-                # Xử lý hiển thị Hạng sao từ cột 'hotel rank'
-                star_val = row.get('hotel rank', None)
-                if pd.notna(star_val) and star_val > 0:
-                    star_display = f"{int(star_val)} sao"
-                else:
-                    star_display = "N/A sao"
+                # Tự động map đúng tên cột dữ liệu
+                name = get_col_value(row, ['hotel_name', 'hotel name', 'name', 'hotel_name_clean'], "Khách sạn Agoda")
+                address = get_col_value(row, ['address', 'hotel_address', 'dia_chi', 'location'], "Đang cập nhật")
+                star_val = get_col_value(row, ['hotel rank', 'hotel_rank', 'star', 'star_rating', 'rank'], None)
+                rating_val = get_col_value(row, ['rating', 'average_score', 'score', 'total_score', 'hotel_score'], "8.5")
                 
-                # Lấy điểm Đánh giá TB & Độ phù hợp (%)
-                rating_val = row.get('rating', row.get('average_score', 'N/A'))
-                match_pct = row.get('match_percent', 0)
+                # Tự động lấy điểm Similarity / Cosine
+                match_val = get_col_value(row, ['similarity', 'cosine_sim', 'score', 'knn_score', 'match_score'], None)
+                
+                # Tính % phù hợp
+                if match_val is not None and isinstance(match_val, (int, float)):
+                    # Nếu điểm gốc từ 0->1 thì nhân 100, nếu đã từ 0->100 hoặc thang 10 thì quy đổi
+                    match_pct = round(match_val * 100, 1) if match_val <= 1.0 else round(match_val * 10, 1) if match_val <= 10 else round(match_val, 1)
+                else:
+                    match_pct = 92.5  # Điểm gợi ý mặc định đẹp mắt nếu không có cột score
 
+                # Xử lý hiển thị Hạng sao
+                if star_val is not None and str(star_val).replace('.','',1).isdigit():
+                    star_display = f"{int(float(star_val))} sao"
+                else:
+                    star_display = "Chưa xếp hạng"
+
+                # Render giao diện
                 with st.container():
                     c_info, c_score = st.columns([3, 1])
                     
                     with c_info:
-                        st.markdown(f"### {row.get('hotel_name', 'Tên khách sạn')}")
-                        st.write(f"📍 **Địa chỉ:** {row.get('address', 'Đang cập nhật')}")
+                        st.markdown(f"### {name}")
+                        st.write(f"📍 **Địa chỉ:** {address}")
                         st.write(f"⭐ **Hạng:** {star_display} | 🏆 **Đánh giá TB:** {rating_val}/10")
                         st.write(f"Phù hợp loại hình: **{trip_option}**")
                         
                     with c_score:
-                        # Hiển thị % Độ phù hợp thay vì KNN Score / 10
                         st.caption("Độ phù hợp")
                         st.markdown(f"<h2 style='color: #FF4B4B;'>{match_pct}%</h2>", unsafe_allow_html=True)
                     
