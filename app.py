@@ -98,9 +98,9 @@ menu = st.sidebar.radio(
 
 st.sidebar.markdown("---")
 st.sidebar.caption("""
-**Nhóm DL07_K314**  
-ĐH KHTN Tp.HCM  
-Thiết kế: 07/2026
+**Nhóm7_DL07_K314**  
+Nguyễn Thị Thúy Hằng · Lê Ngọc Tuấn · Nguyễn Nhật Minh Thư  
+Thiết kế: 08/2026
 """)
 
 # ---------------------------------------------------------
@@ -108,7 +108,7 @@ Thiết kế: 07/2026
 # ---------------------------------------------------------
 if menu == "Trang chủ":
     st.title("Agoda Hotel Recommender System")
-    col_left, col_mid, col_right = st.columns([1, 2, 1])
+    col_left, col_mid, col_right = st.columns([2, 1, 2])
     with col_mid:
         st.image("Agoda_transparent_logo.png", use_container_width=True)
     st.caption("Gợi ý khách sạn cá nhân hoá cho khách du lịch, phân tích kinh doanh cho chủ khách sạn")
@@ -118,7 +118,7 @@ if menu == "Trang chủ":
     col2.metric(label="Lượt đánh giá", value="80,314", delta="267 chưa có review")
     col3.metric(label="Quốc tịch", value="110")
     
-    st.info("ℹ️ Chọn vai trò của bạn ở menu bên trái: khách du lịch hoặc chủ khách sạn.")
+    st.info("ℹ️ Chọn vai trò của bạn ở menu bên trái: **khách du lịch** hoặc **chủ khách sạn**.")
 
 # ---------------------------------------------------------
 # 4. Màn hình: BUSINESS PROBLEM
@@ -133,7 +133,7 @@ elif menu == "Business problem":
         st.markdown("**Thư viện sử dụng:** `Gensim` · `TfidfVectorizer` · `cosine_similarity` (scikit-learn)")
         st.markdown("---")
         st.markdown("#### 🎯 Mô hình được lựa chọn: Cosine Similarity")
-        col_text, col_img = st.columns([1, 1.2])
+        col_text, col_img = st.columns([1, 0.6])
         with col_text:
             st.markdown("""
             **Lý do lựa chọn Cosine Similarity:**
@@ -149,7 +149,7 @@ elif menu == "Business problem":
         st.markdown("**Thư viện sử dụng:** `pyspark.ml ALS (Big Data)`  ·  `surprise KNNWithMeans`")
         st.markdown("---")
         st.markdown("#### 🎯 Mô hình được lựa chọn: KNNWithMeans")
-        col_text, col_img = st.columns([1, 1.2])
+        col_text, col_img = st.columns([1, 0.6])
         with col_text:
             st.markdown("""
             **Lý do lựa chọn KNNWithMeans:**
@@ -174,9 +174,9 @@ elif menu == "Phân công nhóm":
         "Thành viên": ["Nguyễn Thị Thúy Hằng", "Lê Ngọc Tuấn", "Nguyễn Nhật Minh Thư"],
         "Email": ["thuyhang0911@gmail.com", "lengoctuan04lkk@gmail.com", "nguyen.nhatminhthu19@gmail.com"],
         "Việc phụ trách": [
-            "Leader, Định hướng GUI và mô hình, Demo GUI cả 2 project",
-            "Triển khai GUI project 2",
-            "Triển khai GUI project 1"
+            "Leader, Định hướng GUI và mô hình, Demo GUIGUI, Triển khai tìm Đối thủ khách sạn, kiểm tra EDA",
+            "EDA và Data Cleaning",
+            "Triển khai Recommendation System"
         ]
     })
     st.table(df_team)
@@ -186,7 +186,7 @@ elif menu == "Phân công nhóm":
 # ---------------------------------------------------------
 elif menu == "Khách du lịch":
     st.title("Tìm khách sạn phù hợp với bạn")
-    st.caption("Gợi ý khách sạn cá nhân hóa kết hợp lọc mong muốn và xếp hạng KNN")
+    st.caption("Mô tả mong muốn của bạn, hệ thống sẽ gợi ý khách sạn phù hợp")
     
     col_star, col_trip = st.columns(2)
     with col_star:
@@ -196,7 +196,7 @@ elif menu == "Khách du lịch":
         
     user_desc = st.text_area(
         "Mô tả khách sạn bạn muốn",
-        placeholder="Ví dụ: biển phú quốc, đà lạt, giá rẻ..."
+        placeholder="Ví dụ: yên tĩnh, gần biển giá rẻ..."
     )
     
     default_user_id = "101"
