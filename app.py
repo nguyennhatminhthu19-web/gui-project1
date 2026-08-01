@@ -461,74 +461,77 @@ elif menu == "Chủ khách sạn":
                     """)
 
                 # =========================================================
-                # TAB 2: REVIEW (LẤY TỪ HTML MOCKUP)
-                # =========================================================
-                with tab2:
-                    comment_score_col = "Score" if (not hotel_comments.empty and "Score" in hotel_comments.columns) else ("Review_Score" if (not hotel_comments.empty and "Review_Score" in hotel_comments.columns) else None)
-                    
-                    if not hotel_comments.empty and comment_score_col:
-                        avg_rev_score = round(hotel_comments[comment_score_col].mean(), 1)
-                        excellent_count = (hotel_comments[comment_score_col] >= 8.5).sum()
-                        excellent_pct = int(round((excellent_count / len(hotel_comments)) * 100))
-                    else:
-                        avg_rev_score = score_val
-                        excellent_pct = 74
+        # TAB 2: REVIEW 
+        # =========================================================
+        with tab2:
+            current_h_name = hotel_row.get("Hotel_Name", "Khách sạn")
+            current_h_id = hotel_row.get("Hotel_ID")  # Lấy Hotel_ID của khách sạn đang chọn
 
-                    # 3 Metric của Tab Review
-                    rm1, rm2, rm3 = st.columns(3)
-                    rm1.metric(label="Tổng số review", value=f"{total_reviews:,}")
-                    rm2.metric(label="Điểm trung bình", value=f"{avg_rev_score}")
-                    rm3.metric(label="Trên cả tuyệt vời", value=f"{excellent_pct}%")
+            # ---------------------------------------------------------
+            # 1. LỌC COMMENT CHÍNH XÁC THEO HOTEL_ID
+            # ---------------------------------------------------------
+            if 'df_comments' in locals() and not df_comments.empty and current_h_id is not None:
+                # Lọc df_comments theo đúng Hotel_ID
+                hotel_comments = df_comments[df_comments['Hotel_ID'] == current_h_id]
+            else:
+                hotel_comments = pd.DataFrame()
 
-                    st.markdown("#### Review gần đây (mẫu)")
+            # ---------------------------------------------------------
+            # 2. XỬ LÝ ĐIỂM SỐ & METRICS
+            # ---------------------------------------------------------
+            comment_score_col = "Score" if (not hotel_comments.empty and "Score" in hotel_comments.columns) else ("Review_Score" if (not hotel_comments.empty and "Review_Score" in hotel_comments.columns) else None)
+            
+            if not hotel_comments.empty and comment_score_col:
+                avg_rev_score = round(hotel_comments[comment_score_col].mean(), 1)
+                excellent_count = (hotel_comments[comment_score_col] >= 8.5).sum()
+                excellent_pct = int(round((excellent_count / len(hotel_comments)) * 100))
+                total_reviews_display = len(hotel_comments)
+            else:
+                avg_rev_score = round(float(score_val), 1) if 'score_val' in locals() else float(hotel_row.get("Total_Score", 8.5))
+                excellent_pct = int(min(98, max(50, avg_rev_score * 9.5)))
+                total_reviews_display = int(hotel_row.get("comments_count", total_reviews if 'total_reviews' in locals() else 0))
 
-                    # Hiển thị các comment đầu tiên dạng Card
-                    if not hotel_comments.empty:
-                        sample_comments = hotel_comments.head(5)
-                        
-                        reviewer_col = "User_Name" if "User_Name" in sample_comments.columns else ("User_ID" if "User_ID" in sample_comments.columns else None)
-                        title_col = "Title" if "Title" in sample_comments.columns else None
-                        text_col = "Comment" if "Comment" in sample_comments.columns else ("Review_Text" if "Review_Text" in sample_comments.columns else sample_comments.columns[-1])
-                        date_col = "Date" if "Date" in sample_comments.columns else None
-                        trip_col = "Trip_Type" if "Trip_Type" in sample_comments.columns else None
+            # Hiển thị 3 Metric
+            rm1, rm2, rm3 = st.columns(3)
+            rm1.metric(label="Tổng số review", value=f"{total_reviews_display:,}")
+            rm2.metric(label="Điểm trung bình", value=f"{avg_rev_score}")
+            rm3.metric(label="Trên cả tuyệt vời", value=f"{excellent_pct}%")
 
-                        for _, row in sample_comments.iterrows():
-                            r_user = str(row.get(reviewer_col, "Khách hàng Agoda"))
-                            r_score = row.get(comment_score_col, 9.0)
-                            r_title = str(row.get(title_col, "Trải nghiệm tuyệt vời")) if title_col and pd.notna(row.get(title_col)) else "Đánh giá dịch vụ"
-                            r_text = str(row.get(text_col, "Khách sạn sạch sẽ, dịch vụ rất tốt."))
-                            r_date = str(row.get(date_col, "Mới đây")) if date_col else "Gần đây"
-                            r_trip = str(row.get(trip_col, "Khách du lịch")) if trip_col else "Cặp đôi"
+            st.markdown("#### Review gần đây")
 
-                            st.markdown(f"""
-                            <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; background-color: #ffffff;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="font-weight: 600; font-size: 14px; color: #31333F;">👤 {r_user}</span>
-                                    <span style="background-color: #e9f3e9; color: #21a350; font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 10px;">⭐ {r_score}</span>
-                                </div>
-                                <div style="font-size: 12px; color: #787A84; margin: 4px 0;">{r_trip} · {r_date}</div>
-                                <div style="font-weight: 600; font-size: 14px; color: #31333F; margin-bottom: 4px;">{r_title}</div>
-                                <div style="font-size: 13px; color: #50525C;">{r_text}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    else:
-                        sample_reviews_mock = [
-                            {"user": "Nguyễn T. — Việt Nam", "score": 9.2, "meta": "Cặp đôi · 12 tháng 6 2026", "title": "Vị trí tuyệt vời, gần biển", "body": "Phòng sạch sẽ, nhân viên nhiệt tình, sẽ quay lại lần sau."},
-                            {"user": "Kim S. — Hàn Quốc", "score": 8.8, "meta": "Gia đình có em bé · 03 tháng 6 2026", "title": "Dịch vụ tốt cho gia đình", "body": "Nhân viên hỗ trợ nhiệt tình khi có trẻ nhỏ, bữa sáng đa dạng."},
-                            {"user": "John P. — Hoa Kỳ", "score": 7.5, "meta": "Một mình · 28 tháng 5 2026", "title": "Ổn nhưng phòng hơi nhỏ", "body": "Vị trí thuận tiện di chuyển, tuy nhiên phòng nhỏ hơn mong đợi."}
-                        ]
-                        for r in sample_reviews_mock:
-                            st.markdown(f"""
-                            <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; background-color: #ffffff;">
-                                <div style="display: flex; justify-content: space-between; align-items: center;">
-                                    <span style="font-weight: 600; font-size: 14px; color: #31333F;">👤 {r['user']}</span>
-                                    <span style="background-color: #e9f3e9; color: #21a350; font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 10px;">⭐ {r['score']}</span>
-                                </div>
-                                <div style="font-size: 12px; color: #787A84; margin: 4px 0;">{r['meta']}</div>
-                                <div style="font-weight: 600; font-size: 14px; color: #31333F; margin-bottom: 4px;">{r['title']}</div>
-                                <div style="font-size: 13px; color: #50525C;">{r['body']}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
+            # ---------------------------------------------------------
+            # 3. HIỂN THỊ DANH SÁCH COMMENT THỰC TẾ THEO HOTEL_ID
+            # ---------------------------------------------------------
+            if not hotel_comments.empty:
+                sample_comments = hotel_comments.head(5)
+                
+                reviewer_col = "User_Name" if "User_Name" in sample_comments.columns else ("User_ID" if "User_ID" in sample_comments.columns else None)
+                title_col = "Title" if "Title" in sample_comments.columns else None
+                text_col = "Comment" if "Comment" in sample_comments.columns else ("Review_Text" if "Review_Text" in sample_comments.columns else sample_comments.columns[-1])
+                date_col = "Date" if "Date" in sample_comments.columns else None
+                trip_col = "Trip_Type" if "Trip_Type" in sample_comments.columns else None
+
+                for _, row in sample_comments.iterrows():
+                    r_user = str(row.get(reviewer_col, "Khách hàng Agoda")) if reviewer_col else "Khách hàng Agoda"
+                    r_score = row.get(comment_score_col, avg_rev_score) if comment_score_col else avg_rev_score
+                    r_title = str(row.get(title_col, "Đánh giá dịch vụ")) if title_col and pd.notna(row.get(title_col)) else "Đánh giá dịch vụ"
+                    r_text = str(row.get(text_col, ""))
+                    r_date = str(row.get(date_col, "Gần đây")) if date_col and pd.notna(row.get(date_col)) else "Gần đây"
+                    r_trip = str(row.get(trip_col, "Khách du lịch")) if trip_col and pd.notna(row.get(trip_col)) else "Khách du lịch"
+
+                    st.markdown(f"""
+                    <div style="border: 1px solid #e0e0e0; border-radius: 8px; padding: 12px 16px; margin-bottom: 12px; background-color: #ffffff;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-weight: 600; font-size: 14px; color: #31333F;">👤 {r_user}</span>
+                            <span style="background-color: #e9f3e9; color: #21a350; font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 10px;">⭐ {r_score}</span>
+                        </div>
+                        <div style="font-size: 12px; color: #787A84; margin: 4px 0;">{r_trip} · {r_date}</div>
+                        <div style="font-weight: 600; font-size: 14px; color: #31333F; margin-bottom: 4px;">{r_title}</div>
+                        <div style="font-size: 13px; color: #50525C;">{r_text}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+            else:
+                st.info(f"Chưa có bài đánh giá chi tiết nào cho **{current_h_name}** trong dữ liệu.")
 
                 # =========================================================
                 # TAB 3: BENCHMARK ĐỐI THỦ (DÙNG COSINE SIMILARITY)
