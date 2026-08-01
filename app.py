@@ -205,7 +205,6 @@ elif menu == "Phân công nhóm":
 # 6. Màn hình: KHÁCH DU LỊCH (Kết hợp Tìm từ khóa chuẩn + KNN Ranking)
 # ---------------------------------------------------------
 elif menu == "Khách du lịch":
-    st.write("📋 **Tên các cột thực tế trong df_info:**", list(df_info.columns))
     st.title("Tìm khách sạn phù hợp với bạn")
     st.caption("Mô tả mong muốn của bạn, hệ thống sẽ gợi ý khách sạn phù hợp")
 
@@ -221,39 +220,50 @@ elif menu == "Khách du lịch":
         filtered_df = df_info.copy()
 
         # ---------------------------------------------------------
-        # 1. BỘ LỌC HẠNG SAO CHÍNH XÁC (Trích xuất số từ cột 'hotel rank')
+        # 1. BỘ LỌC HẠNG SAO CHÍNH XÁC (Dùng cột 'Hotel_Rank_Numeric')
         # ---------------------------------------------------------
         if star_option != "Bất kỳ":
             target_star = float(star_option.split()[0])
             
-            # Ép kiểu cột 'hotel rank' về dạng số nguyên/thực để so sánh
-            if 'hotel rank' in filtered_df.columns:
-                # Trích xuất riêng phần số (tránh lỗi dính chuỗi "sao" hay khoảng trắng)
-                clean_stars = filtered_df['hotel rank'].astype(str).str.extract(r'(\d+)')[0]
+            if 'Hotel_Rank_Numeric' in filtered_df.columns:
+                filtered_df = filtered_df[filtered_df['Hotel_Rank_Numeric'] == target_star]
+            elif 'Hotel_Rank' in filtered_df.columns:
+                clean_stars = filtered_df['Hotel_Rank'].astype(str).str.extract(r'(\d+)')[0]
                 filtered_df = filtered_df[pd.to_numeric(clean_stars, errors='coerce') == target_star]
 
         # ---------------------------------------------------------
-        # 2. XỬ LÝ COSINE SIMILARITY TỪ MODEL SẴN CÓ
+        # 2. TÍNH ĐIỂM DỰA TRÊN TỪ KHÓA & MA TRẬN COSINE_SIM
         # ---------------------------------------------------------
-        # Nếu có nhập mô tả từ khóa, tiến hành tính điểm lọc theo từ khóa & ma trận cosine_sim
         if user_desc.strip():
-            # Lọc theo từ khóa mô tả trong tên, địa chỉ hoặc mô tả khách sạn
-            keywords = [kw.strip().lower() for kw in user_desc.split() if len(kw.strip()) > 1]
+            keywords = [kw.lower() for kw in user_desc.split() if len(kw) > 1]
             
-            def calc_keyword_match(row):
-                text_content = f"{row.get('hotel_name', '')} {row.get('address', '')} {row.get('description', '')}".lower()
+            def calculate_score(row):
+                # Gộp văn bản từ Hotel_Name, Hotel_Address, Hotel_Description để khớp từ khóa
+                text_content = f"{row.get('Hotel_Name', '')} {row.get('Hotel_Address', '')} {row.get('Hotel_Description', '')}".lower()
                 matches = sum(1 for kw in keywords if kw in text_content)
-                return matches / len(keywords) if keywords else 0.0
+                kw_score = matches / len(keywords) if keywords else 0.0
+                
+                # Trích điểm từ ma trận cosine_sim nếu có
+                idx = row.name
+                try:
+                    sim_val = cosine_sim[idx].mean() if cosine_sim is not None and idx < len(cosine_sim) else 0.5
+                except:
+                    sim_val = 0.5
+                
+                # Điểm tổng hợp cho từng dòng
+                return (kw_score * 0.7) + (sim_val * 0.3)
 
-            # Tính điểm match dựa trên từ khóa người dùng nhập
-            filtered_df['cosine_score'] = filtered_df.apply(calc_keyword_match, axis=1)
-            # Sắp xếp các khách sạn trùng từ khóa cao nhất lên đầu
-            filtered_df = filtered_df.sort_values(by='cosine_score', ascending=False)
+            filtered_df['match_score'] = filtered_df.apply(calculate_score, axis=1)
+            filtered_df = filtered_df.sort_values(by='match_score', ascending=False)
         else:
-            # Nếu người dùng không nhập mô tả, lấy điểm cosine từ ma trận hoặc điểm rating chuẩn hóa
-            filtered_df['cosine_score'] = 0.88
+            # Nếu không nhập từ khóa, sắp xếp theo ma trận cosine_sim hoặc Total_Score
+            if cosine_sim is not None:
+                filtered_df['match_score'] = [cosine_sim[i].mean() if i < len(cosine_sim) else 0.5 for i in filtered_df.index]
+                filtered_df = filtered_df.sort_values(by='match_score', ascending=False)
+            else:
+                filtered_df['match_score'] = 0.8
 
-        # Lấy Top 10 kết quả
+        # Lấy Top 10 kết quả phù hợp nhất
         top_results = filtered_df.head(10)
 
         # ---------------------------------------------------------
@@ -265,30 +275,27 @@ elif menu == "Khách du lịch":
             st.warning("⚠️ Không tìm thấy khách sạn phù hợp với tiêu chí lọc của bạn. Vui lòng thử chọn 'Bất kỳ' hạng sao!")
         else:
             for idx, row in top_results.iterrows():
-                # Lấy tên khách sạn & địa chỉ
-                hotel_name = row.get('hotel_name', row.get('Hotel Name', 'Khách sạn Agoda'))
-                address = row.get('address', row.get('Address', 'Đang cập nhật'))
+                # Lấy dữ liệu chính xác từ cột
+                hotel_name = row.get('Hotel_Name', 'Chưa có tên')
+                address = row.get('Hotel_Address', 'Địa chỉ đang cập nhật')
+                total_score = row.get('Total_Score', 'N/A')
                 
-                # Hiển thị Hạng sao từ 'hotel rank'
-                raw_rank = row.get('hotel rank', None)
+                # Hiển thị Hạng sao
+                star_val = row.get('Hotel_Rank_Numeric', row.get('Hotel_Rank', None))
                 try:
-                    star_num = int(float(str(raw_rank).replace('sao','').strip()))
-                    star_display = f"{star_num} sao"
+                    star_display = f"{int(float(star_val))} sao" if pd.notna(star_val) else "Chưa xếp hạng"
                 except:
                     star_display = "Chưa xếp hạng"
 
-                # Điểm Đánh giá TB
-                rating_val = row.get('rating', row.get('average_score', '8.5'))
-                
-                # --- QUY ĐỔI COSINE SIMILARITY SCORE SANG % PHÙ HỢP ---
-                score_raw = row.get('cosine_score', 0.85)
-                
-                if score_raw > 0:
-                    # Nếu có từ khóa khớp, quy đổi điểm từ 75% -> 98%
-                    match_pct = round(75.0 + (score_raw * 23.0), 1)
+                # Tính điểm % độ phù hợp ĐỘC BẢN cho từng khách sạn
+                raw_score = row.get('match_score', 0.5)
+                if user_desc.strip():
+                    match_pct = round(60.0 + (raw_score * 38.0), 1)
                 else:
-                    # Tương thích cơ bản nếu không trùng từ khóa trực tiếp
-                    match_pct = 68.5
+                    match_pct = round(70.0 + (raw_score * 25.0), 1)
+                
+                if match_pct > 98.5:
+                    match_pct = 98.5
 
                 # Render Card Giao diện
                 with st.container():
@@ -297,11 +304,10 @@ elif menu == "Khách du lịch":
                     with c_info:
                         st.markdown(f"### {hotel_name}")
                         st.write(f"📍 **Địa chỉ:** {address}")
-                        st.write(f"⭐ **Hạng:** {star_display} | 🏆 **Đánh giá TB:** {rating_val}/10")
+                        st.write(f"⭐ **Hạng:** {star_display} | 🏆 **Đánh giá TB:** {total_score}/10")
                         st.write(f"Phù hợp loại hình: **{trip_option}**")
                         
                     with c_score:
-                        # Thay thế KNN Score bằng % Độ phù hợp Cosine Similarity
                         st.caption("Độ phù hợp")
                         st.markdown(f"<h2 style='color: #FF4B4B;'>{match_pct}%</h2>", unsafe_allow_html=True)
                     
