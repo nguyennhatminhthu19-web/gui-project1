@@ -1,59 +1,79 @@
 import os
+import sys
+import pickle
 import joblib
 import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
-import sys, streamlit as st
-st.write("Python đang chạy ứng dụng:", sys.executable)
 import surprise
 from surprise import dump
-import pickle
+import gdown
 
 # ---------------------------------------------------------
 # 1. Cấu hình đường dẫn & Load Dữ liệu / Model
 # ---------------------------------------------------------
 DATA_DIR = "data"
 MODEL_DIR = "model"
+FOLDER_URL = "https://drive.google.com/drive/folders/1QwNB7ZIvZxnhs9a2Nq0QymgDM-P0Zxdr"
 
+@st.cache_resource
+def download_models_from_drive():
+    """Tự động tải 2 file model (.pkl) từ Google Drive folder về thư mục model/ nếu chưa tồn tại."""
+    os.makedirs(MODEL_DIR, exist_ok=True)
+    
+    path_knn = os.path.join(MODEL_DIR, "knn_model.pkl")
+    path_cosine = os.path.join(MODEL_DIR, "cosine_sim.pkl")
+    
+    # Kiểm tra xem cả 2 file đã tồn tại chưa
+    if not (os.path.exists(path_knn) and os.path.exists(path_cosine)):
+        st.info("⏳ Đang tải file model từ Google Drive (lần đầu tiên có thể mất 1 - 3 phút)...")
+        try:
+            # Tải toàn bộ nội dung trong thư mục Drive về folder MODEL_DIR
+            gdown.download_folder(url=FOLDER_URL, output=MODEL_DIR, quiet=False)
+            st.success("✅ Tải model thành công!")
+        except Exception as e:
+            st.error(f"⚠️ Lỗi khi tải model từ Google Drive: {e}")
 
 @st.cache_data
 def load_all_data():
-  try:
-    path_info = os.path.join(DATA_DIR, 'hotel_info_clean.csv')
-    path_comments = os.path.join(DATA_DIR, 'hotel_comments_clean.csv')
+    try:
+        path_info = os.path.join(DATA_DIR, 'hotel_info_clean.csv')
+        path_comments = os.path.join(DATA_DIR, 'hotel_comments_clean.csv')
 
-    df_info = pd.read_csv(path_info)
-    df_comments = pd.read_csv(path_comments)
-    return df_info, df_comments
-  except Exception as e:
-    st.error(f'Lỗi đọc file dữ liệu CSV: {e}')
-    return None, None, ['Bất kỳ']
-
+        df_info = pd.read_csv(path_info)
+        df_comments = pd.read_csv(path_comments)
+        return df_info, df_comments
+    except Exception as e:
+        st.error(f'Lỗi đọc file dữ liệu CSV: {e}')
+        return None, None
 
 @st.cache_resource
 def load_all_models():
-  knn_model = None
-  cosine_sim = None
+    # Gọi hàm tự động tải model nếu chưa có file
+    download_models_from_drive()
 
-  path_knn = os.path.join(MODEL_DIR, "knn_model.pkl")
-  path_cosine = os.path.join(MODEL_DIR, "cosine_sim.pkl")
+    knn_model = None
+    cosine_sim = None
 
-  if os.path.exists(path_knn):
-    try:
-      knn_model = pickle.load(open(path_knn, 'rb'))
-    except Exception as e:
-      st.warning(f"⚠️ Không thể load `knn_model.pkl`: {e}")
+    path_knn = os.path.join(MODEL_DIR, "knn_model.pkl")
+    path_cosine = os.path.join(MODEL_DIR, "cosine_sim.pkl")
 
-  if os.path.exists(path_cosine):
-    try:
-      cosine_sim = pickle.load(open(path_cosine, 'rb'))
-    except Exception as e:
-      st.warning(f"⚠️ Không thể load `cosine_sim.pkl`: {e}")
+    if os.path.exists(path_knn):
+        try:
+            knn_model = pickle.load(open(path_knn, 'rb'))
+        except Exception as e:
+            st.warning(f"⚠️ Không thể load `knn_model.pkl`: {e}")
 
-  return knn_model, cosine_sim
+    if os.path.exists(path_cosine):
+        try:
+            cosine_sim = pickle.load(open(path_cosine, 'rb'))
+        except Exception as e:
+            st.warning(f"⚠️ Không thể load `cosine_sim.pkl`: {e}")
+
+    return knn_model, cosine_sim
 
 
-# Gọi hàm nạp dữ liệu thực tế
+# Gọi hàm nạp dữ liệu & mô hình thực tế
 df_info, df_comments = load_all_data()
 knn_model, cosine_sim = load_all_models()
 
@@ -113,7 +133,6 @@ elif menu == "Business problem":
         st.markdown("**Thư viện sử dụng:** `Gensim` · `TfidfVectorizer` · `cosine_similarity` (scikit-learn)")
         st.markdown("---")
         st.markdown("#### 🎯 Mô hình được lựa chọn: Cosine Similarity")
-        # Tạo 2 cột: Cột trái ghi lý do, Cột phải để hình ảnh biểu đồ giải thích
         col_text, col_img = st.columns([1, 1.2])
         with col_text:
             st.markdown("""
@@ -125,12 +144,11 @@ elif menu == "Business problem":
         with col_img:
             st.image("overlap_gensimcosine.png", caption="Độ tương đồng giữa cosine-sim và Gensim")
 
-    #Gợi ý theo hành vi (Collaborative)    
+    # Gợi ý theo hành vi (Collaborative)    
     with st.expander("🤝 Gợi ý theo hành vi (Collaborative)", expanded=True):
         st.markdown("**Thư viện sử dụng:** `pyspark.ml ALS (Big Data)`  ·  `surprise KNNWithMeans`")
         st.markdown("---")
         st.markdown("#### 🎯 Mô hình được lựa chọn: KNNWithMeans")
-        # Tạo 2 cột: Cột trái ghi lý do, Cột phải để hình ảnh biểu đồ giải thích
         col_text, col_img = st.columns([1, 1.2])
         with col_text:
             st.markdown("""
@@ -142,7 +160,6 @@ elif menu == "Business problem":
         with col_img:
             st.image("rmse_testing.png", caption="So sánh RMSE giữa các mô hình Collaborative (ALS, KNNWithMeans)")
 
-        
     with st.expander("📊 Insight cho chủ khách sạn"):
         st.write("Tổng quan khách sạn, So sánh điểm, Benchmark đối thủ, Phân tích review")
         st.write("pandas · matplotlib/seaborn · wordcloud")
@@ -205,7 +222,7 @@ elif menu == "Khách du lịch":
                     filtered_df.get("Hotel_Address", "").fillna("").astype(str)
                 ).str.lower()
                 
-                # BƯỚC 2A: Thử tìm nguyên cụm từ trước (Ví dụ: "phú quốc")
+                # BƯỚC 2A: Thử tìm nguyên cụm từ trước
                 mask = search_text.str.contains(query_raw, regex=False)
                 
                 # BƯỚC 2B: Nếu không khớp nguyên cụm, bắt buộc chứa TẤT CẢ các từ (AND Logic)
@@ -243,16 +260,16 @@ elif menu == "Khách du lịch":
                 else:
                     top_results = filtered_df.head(5)
                 
-                # 4. Hiển thị kết quả (Đã sửa lỗi hiển thị nan/10)
+                # 4. Hiển thị kết quả
                 for _, row in top_results.iterrows():
                     h_name = row.get("Hotel_Name", "Tên khách sạn")
                     h_address = row.get("Hotel_Address", "Địa chỉ")
                     
-                    # Xử lý hiển thị Hạng sao không bị NaN
+                    # Xử lý hiển thị Hạng sao
                     raw_star = row.get("Star_Rating")
                     h_star = int(raw_star) if (pd.notna(raw_star) and str(raw_star).replace('.','').isdigit()) else "N/A"
                     
-                    # Xử lý hiển thị Điểm đánh giá không bị nan/10
+                    # Xử lý hiển thị Điểm đánh giá
                     raw_score = row.get("Total_Score", row.get("Score"))
                     h_score = round(float(raw_score), 1) if pd.notna(raw_score) else "Chưa có"
                     
@@ -365,24 +382,19 @@ elif menu == "Chủ khách sạn":
             with b_col1:
                 st.subheader("Top-5 khách sạn tương tự nhất (Content-based / Cosine Similarity)")
                 
-                # Tên khách sạn đang chọn
-                selected_hotel_name = current_hotel # Tên biến lưu KS được chọn ở selectbox
+                selected_hotel_name = current_hotel
                 
                 # Tính toán đối thủ trực tiếp bằng Cosine Similarity
                 if cosine_sim is not None and df_info is not None and "Hotel_Name" in df_info.columns:
                     try:
-                        # Lấy index của khách sạn hiện tại trong dataset
                         idx = df_info[df_info['Hotel_Name'] == selected_hotel_name].index[0]
                         
-                        # Lấy danh sách độ tương đồng từ ma trận Cosine Similarity
                         sim_scores = list(enumerate(cosine_sim[idx]))
                         sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
                         
-                        # Lấy Top 5 tương đồng nhất (bỏ qua vị trí 0 vì là chính nó)
                         top_indices = [i[0] for i in sim_scores[1:6]]
                         top_sim_values = [round(i[1], 3) for i in sim_scores[1:6]]
                         
-                        # Tạo DataFrame hiển thị
                         df_comp = df_info.iloc[top_indices][['Hotel_Name', 'Star_Rating', 'Total_Score']].copy()
                         df_comp['Similarity'] = top_sim_values
                         df_comp.columns = ['Đối thủ', 'Hạng', 'Total Score', 'Similarity']
