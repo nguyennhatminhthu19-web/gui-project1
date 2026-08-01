@@ -20,10 +20,8 @@ FOLDER_URL = "https://drive.google.com/drive/folders/1QwNB7ZIvZxnhs9a2Nq0QymgDM-
 def download_models_from_drive():
     """Tự động tải 2 file model (.pkl) từ Google Drive folder về thư mục model/ nếu chưa tồn tại."""
     os.makedirs(MODEL_DIR, exist_ok=True)
-    
     path_knn = os.path.join(MODEL_DIR, "knn_model.pkl")
     path_cosine = os.path.join(MODEL_DIR, "cosine_sim.pkl")
-    
     # Kiểm tra xem cả 2 file đã tồn tại chưa
     if not (os.path.exists(path_knn) and os.path.exists(path_cosine)):
         try:
