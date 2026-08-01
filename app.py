@@ -290,7 +290,7 @@ elif menu == "Khách du lịch":
 # 7. Màn hình: CHỦ KHÁCH SẠN
 # ---------------------------------------------------------
 elif menu == "Chủ khách sạn":
-    st.title("📊 Dashboard chủ khách sạn")
+    st.title("📊 Phân tích & Insight dành cho Chủ Khách Sạn")
 
     # =========================================================
     # 0. KHỐI ĐĂNG NHẬP (LOG IN)
@@ -299,7 +299,7 @@ elif menu == "Chủ khách sạn":
         st.session_state["hotel_logged_in"] = False
 
     if not st.session_state["hotel_logged_in"]:
-        st.caption("Đăng nhập để xem phân tích khách sạn của bạn")
+        st.caption("🔑 Đăng nhập để xem phân tích và báo cáo của khách sạn")
         
         col_login, _ = st.columns([1, 1])
         with col_login:
@@ -336,10 +336,10 @@ elif menu == "Chủ khách sạn":
 
             # Selectbox chọn khách sạn
             hotel_list = sorted(df_info[col_hotel_name].dropna().unique())
-            selected_hotel_name = st.selectbox("Khách sạn của bạn", hotel_list)
+            selected_hotel_name = st.selectbox("🏨 Chọn khách sạn của bạn:", hotel_list)
 
             if selected_hotel_name:
-                # Lấy dòng thông tin khách sạn
+                # Lấy dòng thông tin khách sạn tương ứng
                 hotel_row = df_info[df_info[col_hotel_name] == selected_hotel_name].iloc[0]
                 selected_hotel_id = hotel_row[col_hotel_id_info]
 
@@ -350,7 +350,7 @@ elif menu == "Chủ khách sạn":
                     hotel_comments = pd.DataFrame()
 
                 # ---------------------------------------------------------
-                # CHỈ SỐ HEADLINE ĐẦU TRANG
+                # CHỈ SỐ TỔNG QUAN HÀNG ĐẦU (HEADLINE METRICS)
                 # ---------------------------------------------------------
                 score_col = "Total_Score" if "Total_Score" in df_info.columns else ("Score" if "Score" in df_info.columns else None)
                 score_val = round(float(hotel_row.get(score_col, 0)), 1) if (score_col and pd.notna(hotel_row.get(score_col))) else 8.6
@@ -374,7 +374,7 @@ elif menu == "Chủ khách sạn":
                 ])
 
                 # =========================================================
-                # TAB 1: OVERVIEW (TỔNG QUAN KHÁCH SẠN)
+                # TAB 1: OVERVIEW (LẤY TỪ HTML MOCKUP)
                 # =========================================================
                 with tab1:
                     st.caption("So với trung bình hệ thống & đối thủ trực tiếp theo từng tiêu chí")
@@ -382,15 +382,17 @@ elif menu == "Chủ khách sạn":
                     # Các tiêu chí đánh giá
                     criteria = ['Location', 'Cleanliness', 'Service', 'Facilities', 'Value_for_money']
                     
-                    # Tải hoặc tính điểm chi tiết cho từng tiêu chí
                     ks_scores = []
                     sys_scores = []
                     competitor_scores = []
 
+                    raw_star = hotel_row.get("Star_Rating")
+                    star_val = int(raw_star) if (pd.notna(raw_star) and str(raw_star).replace('.', '').isdigit()) else 0
+
                     for crit in criteria:
                         val_ks = hotel_row.get(crit, round(score_val + (0.8 if crit=='Location' else 0.3), 2))
                         val_sys = df_info[crit].mean() if crit in df_info.columns else (8.27 if crit=='Location' else 8.10)
-                        val_comp = df_info[df_info['Star_Rating'] == hotel_row.get('Star_Rating', 4)][crit].mean() if (crit in df_info.columns and 'Star_Rating' in df_info.columns) else 8.10
+                        val_comp = df_info[df_info['Star_Rating'] == star_val][crit].mean() if (crit in df_info.columns and 'Star_Rating' in df_info.columns and star_val > 0) else 8.10
                         
                         ks_scores.append(round(float(val_ks), 2))
                         sys_scores.append(round(float(val_sys), 2))
@@ -417,7 +419,7 @@ elif menu == "Chủ khách sạn":
                     })
                     st.dataframe(table_df, use_container_width=True, hide_index=True)
 
-                    # 3. Khối Insight thông minh
+                    # 3. Khối Insight
                     wins_total = sum(1 for ks, comp in zip(ks_scores, competitor_scores) if ks >= comp)
                     st.success(f"💡 **Thắng cả 5 đối thủ ở {wins_total}/5 tiêu chí** — khách sạn thể hiện rất tốt trong nhóm cạnh tranh trực tiếp.")
                     
@@ -428,19 +430,18 @@ elif menu == "Chủ khách sạn":
                     """)
 
                 # =========================================================
-                # TAB 2: REVIEW (PHÂN TÍCH ĐÁNH GIÁ KHÁCH HÀNG)
+                # TAB 2: REVIEW (LẤY TỪ HTML MOCKUP)
                 # =========================================================
                 with tab2:
                     comment_score_col = "Score" if (not hotel_comments.empty and "Score" in hotel_comments.columns) else ("Review_Score" if (not hotel_comments.empty and "Review_Score" in hotel_comments.columns) else None)
                     
-                    # Tính % "Trên cả tuyệt vời" (Tỷ lệ đánh giá điểm >= 8.5 hoặc >= 9.0)
                     if not hotel_comments.empty and comment_score_col:
                         avg_rev_score = round(hotel_comments[comment_score_col].mean(), 1)
                         excellent_count = (hotel_comments[comment_score_col] >= 8.5).sum()
                         excellent_pct = int(round((excellent_count / len(hotel_comments)) * 100))
                     else:
                         avg_rev_score = score_val
-                        excellent_pct = 74  # Mặc định mẫu từ HTML
+                        excellent_pct = 74
 
                     # 3 Metric của Tab Review
                     rm1, rm2, rm3 = st.columns(3)
@@ -452,7 +453,6 @@ elif menu == "Chủ khách sạn":
 
                     # Hiển thị các comment đầu tiên dạng Card
                     if not hotel_comments.empty:
-                        # Lấy tối đa 5 review đầu tiên
                         sample_comments = hotel_comments.head(5)
                         
                         reviewer_col = "User_Name" if "User_Name" in sample_comments.columns else ("User_ID" if "User_ID" in sample_comments.columns else None)
@@ -481,7 +481,6 @@ elif menu == "Chủ khách sạn":
                             </div>
                             """, unsafe_allow_html=True)
                     else:
-                        # Dữ liệu mẫu tĩnh nếu file CSV review trống
                         sample_reviews_mock = [
                             {"user": "Nguyễn T. — Việt Nam", "score": 9.2, "meta": "Cặp đôi · 12 tháng 6 2026", "title": "Vị trí tuyệt vời, gần biển", "body": "Phòng sạch sẽ, nhân viên nhiệt tình, sẽ quay lại lần sau."},
                             {"user": "Kim S. — Hàn Quốc", "score": 8.8, "meta": "Gia đình có em bé · 03 tháng 6 2026", "title": "Dịch vụ tốt cho gia đình", "body": "Nhân viên hỗ trợ nhiệt tình khi có trẻ nhỏ, bữa sáng đa dạng."},
@@ -501,51 +500,31 @@ elif menu == "Chủ khách sạn":
                             """, unsafe_allow_html=True)
 
                 # =========================================================
-                # TAB 3: BENCHMARK ĐỐI THỦ
+                # TAB 3: BENCHMARK ĐỐI THỦ (KHÔI PHỤC BẢN CŨ GỐC)
                 # =========================================================
                 with tab3:
-                    col_comp1, col_comp2 = st.columns([2, 1])
-
-                    with col_comp1:
-                        st.caption("Top-5 khách sạn tương tự nhất (content-based)")
+                    st.subheader("📊 So sánh vị thế với toàn thị trường & đối thủ")
+                    
+                    if score_col and score_col in df_info.columns:
+                        avg_market_score = round(float(df_info[score_col].mean()), 2)
                         
-                        # Lấy 5 đối thủ cùng phân khúc sao
-                        same_star = hotel_row.get("Star_Rating", 4)
-                        comps_df = df_info[df_info[col_hotel_name] != selected_hotel_name]
-                        if "Star_Rating" in comps_df.columns:
-                            comps_df = comps_df[comps_df["Star_Rating"] == same_star]
+                        # Lọc đối thủ cùng hạng sao
+                        same_star_df = df_info[df_info["Star_Rating"] == star_val] if (star_val > 0 and "Star_Rating" in df_info.columns) else df_info
+                        avg_star_score = round(float(same_star_df[score_col].mean()), 2)
 
-                        comps_df = comps_df.head(5)
-
-                        if not comps_df.empty:
-                            bench_table = pd.DataFrame({
-                                "Đối thủ": comps_df[col_hotel_name],
-                                "Hạng": [f"{s} sao" for s in comps_df.get("Star_Rating", [4]*len(comps_df))],
-                                "Total Score": comps_df.get(score_col, [8.0]*len(comps_df)),
-                                "Similarity": [0.853, 0.853, 0.849, 0.839, 0.838][:len(comps_df)]
-                            })
-                            st.dataframe(bench_table, use_container_width=True, hide_index=True)
+                        b1, b2, b3 = st.columns(3)
                         
-                        st.caption("🤖 *Sử dụng lại chính model content-based để xác định 'đối thủ thực sự', thay vì chỉ so sánh với trung bình toàn hệ thống.*")
+                        diff_market = round(score_val - avg_market_score, 2)
+                        diff_star = round(score_val - avg_star_score, 2)
 
-                    with col_comp2:
-                        st.markdown("""
-                        <div style="background-color: #f0f2f6; border-radius: 8px; padding: 14px 16px;">
-                            <div style="font-weight: 700; font-size: 13px; color: #31333F; margin-bottom: 12px;">Beats # Competitors</div>
-                            <div style="display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px solid rgba(49,51,63,0.08);">
-                                <span>Location</span><span style="font-weight: 700; color: #21a350;">5/5</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px solid rgba(49,51,63,0.08);">
-                                <span>Cleanliness</span><span style="font-weight: 700; color: #21a350;">5/5</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px solid rgba(49,51,63,0.08);">
-                                <span>Service</span><span style="font-weight: 700; color: #21a350;">5/5</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; border-bottom: 1px solid rgba(49,51,63,0.08);">
-                                <span>Facilities</span><span style="font-weight: 700; color: #21a350;">5/5</span>
-                            </div>
-                            <div style="display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0;">
-                                <span>Value_for_money</span><span style="font-weight: 700; color: #21a350;">4/5</span>
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        b1.metric("Điểm khách sạn của bạn", f"{score_val}/10")
+                        b2.metric("Trung bình toàn thị trường", f"{avg_market_score}/10", delta=f"{diff_market:+0.2f} điểm")
+                        b3.metric(f"Trung bình phân khúc {star_val} sao", f"{avg_star_score}/10", delta=f"{diff_star:+0.2f} điểm")
+
+                        st.markdown("---")
+                        st.markdown("#### 🏆 Top 5 khách sạn đối thủ cùng phân khúc sao điểm cao nhất")
+                        top_competitors = same_star_df.sort_values(by=score_col, ascending=False).head(5)
+                        display_cols = [c for c in [col_hotel_name, "Star_Rating", score_col, "Hotel_Address"] if c in top_competitors.columns]
+                        st.dataframe(top_competitors[display_cols], use_container_width=True, hide_index=True)
+                    else:
+                        st.warning("⚠️ Không tìm thấy cột chứa điểm đánh giá trong `hotel_info_clean.csv`!")
