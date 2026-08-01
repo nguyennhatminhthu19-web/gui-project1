@@ -26,11 +26,9 @@ def download_models_from_drive():
     
     # Kiểm tra xem cả 2 file đã tồn tại chưa
     if not (os.path.exists(path_knn) and os.path.exists(path_cosine)):
-        st.info("⏳ Đang tải file model từ Google Drive (lần đầu tiên có thể mất 1 - 3 phút)...")
         try:
             # Tải toàn bộ nội dung trong thư mục Drive về folder MODEL_DIR
             gdown.download_folder(url=FOLDER_URL, output=MODEL_DIR, quiet=False)
-            st.success("✅ Tải model thành công!")
         except Exception as e:
             st.error(f"⚠️ Lỗi khi tải model từ Google Drive: {e}")
 
@@ -86,6 +84,24 @@ st.set_page_config(
     layout="wide"
 )
 
+# Custom CSS để chỉnh chữ radio menu to hơn và giãn rộng khoảng cách
+st.markdown("""
+<style>
+    /* Chỉnh kích thước chữ của Radio Options trong Sidebar */
+    [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
+        font-size: 1.15rem !important; /* Tăng cỡ chữ */
+        font-weight: 500;
+    }
+    
+    /* Tăng khoảng cách (padding/margin) giữa các lựa chọn Menu */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label {
+        padding-top: 10px !important;
+        padding-bottom: 10px !important;
+        margin-bottom: 4px !important;
+    }
+</style>
+""", unsafe_allow_html=True)
+
 # ---------------------------------------------------------
 # 2. Thanh điều hướng bên trái (Sidebar Navigation)
 # ---------------------------------------------------------
@@ -96,6 +112,12 @@ menu = st.sidebar.radio(
     ["Trang chủ", "Business problem", "Phân công nhóm", "Khách du lịch", "Chủ khách sạn"]
 )
 
+# Thêm thông báo trạng thái mô hình be bé ở đây
+if knn_model is not None and cosine_sim is not None:
+    st.sidebar.caption("🟢 *Mô hình đã sẵn sàng cho gợi ý*")
+else:
+    st.sidebar.caption("🔴 *Mô hình chưa sẵn sàng, vui lòng kiểm tra lại*")
+    
 st.sidebar.markdown("---")
 st.sidebar.caption("""
 **Nhóm7_DL07_K314**  
@@ -133,7 +155,7 @@ elif menu == "Business problem":
         st.markdown("**Thư viện sử dụng:** `Gensim` · `TfidfVectorizer` · `cosine_similarity` (scikit-learn)")
         st.markdown("---")
         st.markdown("#### 🎯 Mô hình được lựa chọn: Cosine Similarity")
-        col_text, col_img = st.columns([1, 0.6])
+        col_text, col_img = st.columns([1, 0.4])
         with col_text:
             st.markdown("""
             **Lý do lựa chọn Cosine Similarity:**
@@ -149,7 +171,7 @@ elif menu == "Business problem":
         st.markdown("**Thư viện sử dụng:** `pyspark.ml ALS (Big Data)`  ·  `surprise KNNWithMeans`")
         st.markdown("---")
         st.markdown("#### 🎯 Mô hình được lựa chọn: KNNWithMeans")
-        col_text, col_img = st.columns([1, 0.6])
+        col_text, col_img = st.columns([1, 0.4])
         with col_text:
             st.markdown("""
             **Lý do lựa chọn KNNWithMeans:**
@@ -174,7 +196,7 @@ elif menu == "Phân công nhóm":
         "Thành viên": ["Nguyễn Thị Thúy Hằng", "Lê Ngọc Tuấn", "Nguyễn Nhật Minh Thư"],
         "Email": ["thuyhang0911@gmail.com", "lengoctuan04lkk@gmail.com", "nguyen.nhatminhthu19@gmail.com"],
         "Việc phụ trách": [
-            "Leader, Định hướng GUI và mô hình, Demo GUIGUI, Triển khai tìm Đối thủ khách sạn, kiểm tra EDA",
+            "Leader, Định hướng GUI và mô hình, Demo GUI, Triển khai tìm Đối thủ khách sạn, kiểm tra EDA",
             "EDA và Data Cleaning",
             "Triển khai Recommendation System"
         ]
