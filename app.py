@@ -205,6 +205,7 @@ elif menu == "Phân công nhóm":
 # 6. Màn hình: KHÁCH DU LỊCH (Kết hợp Tìm từ khóa chuẩn + KNN Ranking)
 # ---------------------------------------------------------
 elif menu == "Khách du lịch":
+    st.write("📋 **Tên các cột thực tế trong df_info:**", list(df_info.columns))
     st.title("Tìm khách sạn phù hợp với bạn")
     st.caption("Mô tả mong muốn của bạn, hệ thống sẽ gợi ý khách sạn phù hợp")
 
