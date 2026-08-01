@@ -287,124 +287,175 @@ elif menu == "Khách du lịch":
             st.error("Chưa nạp được dữ liệu `hotel_info_clean.csv`!")
 
 # ---------------------------------------------------------
-# 7. Màn hình: CHỦ KHÁCH SẠN (Chia 3 Tab Insight)
+# 7. Màn hình: CHỦ KHÁCH SẠN
 # ---------------------------------------------------------
 elif menu == "Chủ khách sạn":
     st.title("📊 Phân tích & Insight dành cho Chủ Khách Sạn")
-    st.caption("Báo cáo hiệu suất kinh doanh, so sánh đối thủ cạnh tranh và phân tích ý kiến phản hồi từ khách hàng.")
 
-    if df_info is None or df_comments is None or df_info.empty:
-        st.error("⚠️ Chưa nạp được đầy đủ dữ liệu từ `hotel_info_clean.csv` hoặc `hotel_comments_clean.csv`!")
+    # =========================================================
+    # 0. KHỐI ĐĂNG NHẬP (LOG IN)
+    # =========================================================
+    if "hotel_logged_in" not in st.session_state:
+        st.session_state["hotel_logged_in"] = False
+
+    if not st.session_state["hotel_logged_in"]:
+        st.subheader("🔐 Đăng nhập hệ thống quản trị khách sạn")
+        
+        col_login, _ = st.columns([1, 1])
+        with col_login:
+            username = st.text_input("Tên đăng nhập / Email", value="admin")
+            password = st.text_input("Mật khẩu", type="password", value="123456")
+            
+            if st.button("🔑 Đăng nhập", type="primary"):
+                if username and password:
+                    st.session_state["hotel_logged_in"] = True
+                    st.success("✅ Đăng nhập thành công!")
+                    st.rerun()
+                else:
+                    st.error("⚠️ Vui lòng nhập đầy đủ Tên đăng nhập và Mật khẩu!")
+                    
+        st.info("💡 Bạn cần đăng nhập để xem thông tin kinh doanh và phân tích đánh giá của khách sạn.")
+
+    # =========================================================
+    # GIAO DIỆN QUẢN TRỊ KHI ĐÃ ĐĂNG NHẬP
+    # =========================================================
     else:
-        # Xác định các cột định danh
-        col_hotel_id_info = "Hotel_ID" if "Hotel_ID" in df_info.columns else df_info.columns[0]
-        col_hotel_name = "Hotel_Name" if "Hotel_Name" in df_info.columns else "Tên khách sạn"
-        col_hotel_id_comments = "Hotel_ID" if "Hotel_ID" in df_comments.columns else df_comments.columns[0]
+        # Nút đăng xuất
+        col_header, col_logout = st.columns([4, 1])
+        with col_logout:
+            if st.button("🚪 Đăng xuất", type="secondary"):
+                st.session_state["hotel_logged_in"] = False
+                st.rerun()
 
-        # 1. Chọn khách sạn cần phân tích
-        hotel_list = sorted(df_info[col_hotel_name].dropna().unique())
-        selected_hotel_name = st.selectbox("🏨 Chọn khách sạn của bạn để xem báo cáo:", hotel_list)
+        # Kiểm tra dữ liệu
+        if df_info is None or df_comments is None or df_info.empty:
+            st.error("⚠️ Chưa nạp được đầy đủ dữ liệu từ `hotel_info_clean.csv` hoặc `hotel_comments_clean.csv`!")
+        else:
+            # Tự động nhận diện tên cột định danh
+            col_hotel_id_info = "Hotel_ID" if "Hotel_ID" in df_info.columns else df_info.columns[0]
+            col_hotel_name = "Hotel_Name" if "Hotel_Name" in df_info.columns else "Tên khách sạn"
+            col_hotel_id_comments = "Hotel_ID" if "Hotel_ID" in df_comments.columns else df_comments.columns[0]
 
-        if selected_hotel_name:
-            # Lấy thông tin khách sạn chọn
-            hotel_row = df_info[df_info[col_hotel_name] == selected_hotel_name].iloc[0]
-            selected_hotel_id = hotel_row[col_hotel_id_info]
+            # Selectbox chọn khách sạn
+            hotel_list = sorted(df_info[col_hotel_name].dropna().unique())
+            selected_hotel_name = st.selectbox("🏨 Chọn khách sạn của bạn để xem báo cáo:", hotel_list)
 
-            # Lọc bình luận tương ứng
-            hotel_comments = df_comments[df_comments[col_hotel_id_comments] == selected_hotel_id]
+            if selected_hotel_name:
+                # 1. Lấy dữ liệu dòng khách sạn tương ứng từ df_info (hotel_info_clean.csv)
+                hotel_row = df_info[df_info[col_hotel_name] == selected_hotel_name].iloc[0]
+                selected_hotel_id = hotel_row[col_hotel_id_info]
 
-            st.markdown("---")
+                # 2. Lọc danh sách bình luận tương ứng từ df_comments (hotel_comments_clean.csv)
+                hotel_comments = df_comments[df_comments[col_hotel_id_comments] == selected_hotel_id]
 
-            # Tạo 3 TAB giao diện
-            tab1, tab2, tab3 = st.tabs([
-                "🏨 1. Tổng quan khách sạn", 
-                "📊 2. Benchmark đối thủ", 
-                "💬 3. Phân tích Review"
-            ])
+                st.markdown("---")
 
-            # =========================================================
-            # TAB 1: TỔNG QUAN KHÁCH SẠN
-            # =========================================================
-            with tab1:
-                st.subheader(f"Thông tin chung: {selected_hotel_name}")
-                
-                c1, c2, c3, c4 = st.columns(4)
+                # BỘ 3 TAB PHÂN TÍCH
+                tab1, tab2, tab3 = st.tabs([
+                    "🏨 1. Tổng quan khách sạn", 
+                    "📊 2. Benchmark đối thủ", 
+                    "💬 3. Phân tích Review"
+                ])
 
-                # Hạng sao
-                raw_star = hotel_row.get("Star_Rating")
-                star_val = int(raw_star) if (pd.notna(raw_star) and str(raw_star).replace('.', '').isdigit()) else 0
-                c1.metric(label="Hạng sao", value=f"{star_val} ⭐" if star_val > 0 else "N/A")
-
-                # Điểm trung bình
-                raw_score = hotel_row.get("Total_Score", hotel_row.get("Score"))
-                score_val = round(float(raw_score), 1) if pd.notna(raw_score) else 0.0
-                c2.metric(label="Điểm trung bình", value=f"{score_val}/10" if score_val > 0 else "Chưa có")
-
-                # Tổng số review
-                c3.metric(label="Tổng lượt đánh giá", value=f"{len(hotel_comments):,} lượt")
-
-                # Khách hàng
-                user_col = "User_ID" if "User_ID" in hotel_comments.columns else None
-                num_users = hotel_comments[user_col].nunique() if user_col and not hotel_comments.empty else len(hotel_comments)
-                c4.metric(label="Số lượt khách đánh giá", value=f"{num_users:,}")
-
-                st.markdown(f"📍 **Địa chỉ:** {hotel_row.get('Hotel_Address', 'N/A')}")
-                
-                st.markdown("#### 📌 Tóm tắt thuộc tính & Tiện ích")
-                col_left, col_right = st.columns(2)
-                with col_left:
-                    st.info(f"• **Mã khách sạn (Hotel ID):** `{selected_hotel_id}`")
-                with col_right:
-                    st.info(f"• **Trạng thái dữ liệu:** Đã đồng bộ giữa Info ({len(df_info)} KS) & Comments ({len(df_comments)} Reviews)")
-
-            # =========================================================
-            # TAB 2: BENCHMARK ĐỐI THỦ & SO SÁNH ĐIỂM
-            # =========================================================
-            with tab2:
-                st.subheader("📊 So sánh vị thế với toàn thị trường / cùng phân khúc")
-                
-                # Tính điểm trung bình toàn hệ thống
-                score_col = "Total_Score" if "Total_Score" in df_info.columns else ("Score" if "Score" in df_info.columns else None)
-                
-                if score_col:
-                    avg_market_score = round(df_info[score_col].mean(), 2)
+                # =========================================================
+                # TAB 1: TỔNG QUAN KHÁCH SẠN (Lấy từ hotel_info_clean.csv)
+                # =========================================================
+                with tab1:
+                    st.subheader(f"📌 Báo cáo tổng quan: {selected_hotel_name}")
                     
-                    # Lọc đối thủ cùng hạng sao
-                    same_star_df = df_info[df_info["Star_Rating"] == star_val] if star_val > 0 else df_info
-                    avg_star_score = round(same_star_df[score_col].mean(), 2)
+                    c1, c2, c3, c4 = st.columns(4)
 
-                    b1, b2, b3 = st.columns(3)
-                    
-                    diff_market = round(score_val - avg_market_score, 2)
-                    diff_star = round(score_val - avg_star_score, 2)
+                    # Hạng sao
+                    raw_star = hotel_row.get("Star_Rating")
+                    star_val = int(raw_star) if (pd.notna(raw_star) and str(raw_star).replace('.', '').isdigit()) else 0
+                    c1.metric(label="Hạng sao", value=f"{star_val} ⭐" if star_val > 0 else "N/A")
 
-                    b1.metric("Điểm khách sạn của bạn", f"{score_val}/10")
-                    b2.metric("Trung bình toàn thị trường", f"{avg_market_score}/10", delta=f"{diff_market} điểm")
-                    b3.metric(f"Trung bình phân khúc {star_val} sao", f"{avg_star_score}/10", delta=f"{diff_star} điểm")
+                    # Điểm tổng quan từ CSV hotel_info
+                    score_col = "Total_Score" if "Total_Score" in df_info.columns else ("Score" if "Score" in df_info.columns else None)
+                    raw_score = hotel_row.get(score_col) if score_col else None
+                    score_val = round(float(raw_score), 1) if pd.notna(raw_score) else 0.0
+                    c2.metric(label="Điểm trung bình", value=f"{score_val}/10" if score_val > 0 else "Chưa có")
+
+                    # Tổng lượt bình luận
+                    c3.metric(label="Tổng lượt review", value=f"{len(hotel_comments):,} lượt")
+
+                    # Số lượng khách hàng đánh giá
+                    user_col = "User_ID" if "User_ID" in hotel_comments.columns else None
+                    num_users = hotel_comments[user_col].nunique() if user_col and not hotel_comments.empty else len(hotel_comments)
+                    c4.metric(label="Lượt khách đánh giá", value=f"{num_users:,}")
 
                     st.markdown("---")
-                    st.markdown("#### 🏆 Top 5 khách sạn cùng phân khúc sao có điểm cao nhất")
-                    top_competitors = same_star_df.sort_values(by=score_col, ascending=False).head(5)
-                    display_cols = [c for c in [col_hotel_name, "Star_Rating", score_col, "Hotel_Address"] if c in top_competitors.columns]
-                    st.dataframe(top_competitors[display_cols], use_container_width=True)
-                else:
-                    st.warning("⚠️ Không tìm thấy cột chứa điểm đánh giá tổng thể trong `hotel_info_clean.csv`!")
+                    st.markdown("#### 📍 Thông tin chi tiết niêm yết")
+                    col_info1, col_info2 = st.columns(2)
+                    with col_info1:
+                        st.write(f"• **Mã định danh (Hotel ID):** `{selected_hotel_id}`")
+                        st.write(f"• **Tên khách sạn:** {selected_hotel_name}")
+                    with col_info2:
+                        st.write(f"• **Địa chỉ:** {hotel_row.get('Hotel_Address', 'Chưa cập nhật')}")
+                        if "City" in hotel_row:
+                            st.write(f"• **Thành phố:** {hotel_row.get('City')}")
 
-            # =========================================================
-            # TAB 3: PHÂN TÍCH REVIEW & BÌNH LUẬN
-            # =========================================================
-            with tab3:
-                st.subheader("💬 Phân tích đánh giá chi tiết từ khách hàng")
+                # =========================================================
+                # TAB 2: BENCHMARK ĐỐI THỦ (GIỮ NGUYÊN)
+                # =========================================================
+                with tab2:
+                    st.subheader("📊 So sánh vị thế với toàn thị trường & đối thủ")
+                    
+                    if score_col:
+                        avg_market_score = round(df_info[score_col].mean(), 2)
+                        
+                        # Lọc đối thủ cùng hạng sao
+                        same_star_df = df_info[df_info["Star_Rating"] == star_val] if star_val > 0 else df_info
+                        avg_star_score = round(same_star_df[score_col].mean(), 2)
 
-                if hotel_comments.empty:
-                    st.info("ℹ️ Khách sạn này hiện chưa có nhận xét/bình luận nào trong hệ thống.")
-                else:
-                    st.write(f"Hiển thị **{len(hotel_comments)}** bình luận gần nhất:")
+                        b1, b2, b3 = st.columns(3)
+                        
+                        diff_market = round(score_val - avg_market_score, 2)
+                        diff_star = round(score_val - avg_star_score, 2)
 
-                    # Ẩn bớt cột Hotel_ID khi hiển thị table cho gọn
-                    show_comment_cols = [c for c in hotel_comments.columns if c != col_hotel_id_comments]
-                    st.dataframe(
-                        hotel_comments[show_comment_cols] if show_comment_cols else hotel_comments,
-                        use_container_width=True,
-                        height=400
-                    )
+                        b1.metric("Điểm khách sạn của bạn", f"{score_val}/10")
+                        b2.metric("Trung bình toàn thị trường", f"{avg_market_score}/10", delta=f"{diff_market} điểm")
+                        b3.metric(f"Trung bình phân khúc {star_val} sao", f"{avg_star_score}/10", delta=f"{diff_star} điểm")
+
+                        st.markdown("---")
+                        st.markdown("#### 🏆 Top 5 khách sạn đối thủ cùng phân khúc sao điểm cao nhất")
+                        top_competitors = same_star_df.sort_values(by=score_col, ascending=False).head(5)
+                        display_cols = [c for c in [col_hotel_name, "Star_Rating", score_col, "Hotel_Address"] if c in top_competitors.columns]
+                        st.dataframe(top_competitors[display_cols], use_container_width=True)
+                    else:
+                        st.warning("⚠️ Không tìm thấy cột chứa điểm đánh giá trong `hotel_info_clean.csv`!")
+
+                # =========================================================
+                # TAB 3: PHÂN TÍCH REVIEW (Lấy từ hotel_comments_clean.csv)
+                # =========================================================
+                with tab3:
+                    st.subheader("💬 Phân tích đánh giá & bình luận của khách hàng")
+
+                    if hotel_comments.empty:
+                        st.info("ℹ️ Khách sạn này hiện chưa có nhận xét nào trong `hotel_comments_clean.csv`.")
+                    else:
+                        comment_score_col = "Score" if "Score" in hotel_comments.columns else ("Review_Score" if "Review_Score" in hotel_comments.columns else None)
+                        
+                        rc1, rc2, rc3 = st.columns(3)
+                        rc1.metric("Tổng số nhận xét", f"{len(hotel_comments):,} bình luận")
+                        if comment_score_col:
+                            avg_comment_score = round(hotel_comments[comment_score_col].mean(), 2)
+                            rc2.metric("Điểm trung bình từ Reviews", f"{avg_comment_score}/10")
+                            rc3.metric("Điểm thấp / cao nhất", f"{hotel_comments[comment_score_col].min()} - {hotel_comments[comment_score_col].max()}")
+
+                        st.markdown("---")
+                        
+                        # Biểu đồ phân bố điểm đánh giá
+                        if comment_score_col and not hotel_comments.empty:
+                            st.markdown("#### 📈 Phân bố điểm số từ đánh giá khách hàng")
+                            score_counts = hotel_comments[comment_score_col].value_counts().sort_index()
+                            st.bar_chart(score_counts)
+
+                        # Bảng chi tiết đánh giá từ khách hàng
+                        st.markdown("#### 📋 Danh sách bình luận chi tiết")
+                        show_comment_cols = [c for c in hotel_comments.columns if c != col_hotel_id_comments]
+                        st.dataframe(
+                            hotel_comments[show_comment_cols] if show_comment_cols else hotel_comments,
+                            use_container_width=True,
+                            height=400
+                        )
