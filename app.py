@@ -500,31 +500,68 @@ elif menu == "Chủ khách sạn":
                             """, unsafe_allow_html=True)
 
                 # =========================================================
-                # TAB 3: BENCHMARK ĐỐI THỦ (KHÔI PHỤC BẢN CŨ GỐC)
+                # TAB 3: BENCHMARK ĐỐI THỦ (DÙNG COSINE SIMILARITY)
                 # =========================================================
                 with tab3:
-                    st.subheader("📊 So sánh vị thế với toàn thị trường & đối thủ")
+                    st.subheader("🎯 Top 5 Khách sạn đối thủ tương tự nhất (Cosine Similarity)")
                     
-                    if score_col and score_col in df_info.columns:
-                        avg_market_score = round(float(df_info[score_col].mean()), 2)
-                        
-                        # Lọc đối thủ cùng hạng sao
-                        same_star_df = df_info[df_info["Star_Rating"] == star_val] if (star_val > 0 and "Star_Rating" in df_info.columns) else df_info
-                        avg_star_score = round(float(same_star_df[score_col].mean()), 2)
+                    # 1. Lấy vị trí (index) của khách sạn được chọn trong df_info
+                    hotel_idx_list = df_info[df_info[col_hotel_id_info] == selected_hotel_id].index
 
-                        b1, b2, b3 = st.columns(3)
-                        
-                        diff_market = round(score_val - avg_market_score, 2)
-                        diff_star = round(score_val - avg_star_score, 2)
+                    if not hotel_idx_list.empty:
+                        hotel_idx = hotel_idx_list[0]
 
-                        b1.metric("Điểm khách sạn của bạn", f"{score_val}/10")
-                        b2.metric("Trung bình toàn thị trường", f"{avg_market_score}/10", delta=f"{diff_market:+0.2f} điểm")
-                        b3.metric(f"Trung bình phân khúc {star_val} sao", f"{avg_star_score}/10", delta=f"{diff_star:+0.2f} điểm")
+                        # 2. Kiểm tra và lấy ma trận cosine_sim đã load ở đầu bài
+                        sim_scores = []
+                        if 'cosine_sim' in globals() and cosine_sim is not None:
+                            sim_scores = list(enumerate(cosine_sim[hotel_idx]))
+                        elif 'cosine_sim' in st.session_state and st.session_state['cosine_sim'] is not None:
+                            sim_scores = list(enumerate(st.session_state['cosine_sim'][hotel_idx]))
 
-                        st.markdown("---")
-                        st.markdown("#### 🏆 Top 5 khách sạn đối thủ cùng phân khúc sao điểm cao nhất")
-                        top_competitors = same_star_df.sort_values(by=score_col, ascending=False).head(5)
-                        display_cols = [c for c in [col_hotel_name, "Star_Rating", score_col, "Hotel_Address"] if c in top_competitors.columns]
-                        st.dataframe(top_competitors[display_cols], use_container_width=True, hide_index=True)
+                        if sim_scores:
+                            # Sắp xếp giảm dần theo điểm tương đồng Cosine
+                            sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
+                            
+                            # Bỏ qua chính nó (index trùng) và lấy top 5 đối thủ tương đồng nhất
+                            top_sim_indices = []
+                            top_sim_values = []
+                            for idx_sim, score in sim_scores:
+                                if idx_sim != hotel_idx:
+                                    top_sim_indices.append(idx_sim)
+                                    top_sim_values.append(round(float(score), 3))
+                                if len(top_sim_indices) == 5:
+                                    break
+
+                            # Lấy thông tin 5 đối thủ từ df_info
+                            top_competitors = df_info.iloc[top_sim_indices].copy()
+                            top_competitors['Cosine_Similarity'] = top_sim_values
+
+                            # Tính toán các chỉ số so sánh (Metrics)
+                            comp_avg_score = round(float(top_competitors[score_col].mean()), 2) if (score_col and score_col in top_competitors.columns) else 0.0
+                            comp_avg_sim = round(float(sum(top_sim_values) / len(top_sim_values)), 3)
+                            diff_score = round(score_val - comp_avg_score, 2)
+
+                            b1, b2, b3 = st.columns(3)
+                            b1.metric("Điểm khách sạn của bạn", f"{score_val}/10")
+                            b2.metric("Điểm TB Top 5 đối thủ", f"{comp_avg_score}/10", delta=f"{diff_score:+0.2f} điểm")
+                            b3.metric("Độ tương đồng trung bình", f"{comp_avg_sim}")
+
+                            st.markdown("---")
+                            st.markdown("#### 🏆 Danh sách 5 đối thủ cạnh tranh trực tiếp (Dựa trên Cosine Similarity)")
+
+                            # Lựa chọn các cột hiển thị ra bảng
+                            cols_to_show = [col_hotel_name]
+                            if 'Star_Rating' in top_competitors.columns:
+                                cols_to_show.append('Star_Rating')
+                            if score_col and score_col in top_competitors.columns:
+                                cols_to_show.append(score_col)
+                            cols_to_show.append('Cosine_Similarity')
+                            if 'Hotel_Address' in top_competitors.columns:
+                                cols_to_show.append('Hotel_Address')
+
+                            st.dataframe(top_competitors[cols_to_show], use_container_width=True, hide_index=True)
+
+                        else:
+                            st.warning("⚠️ Không tìm thấy biến `cosine_sim`. Bạn hãy đảm bảo đã load/tính ma trận `cosine_sim` ở đầu file app.py nhé!")
                     else:
-                        st.warning("⚠️ Không tìm thấy cột chứa điểm đánh giá trong `hotel_info_clean.csv`!")
+                        st.error("⚠️ Không tìm thấy dữ liệu cho khách sạn này trong `df_info`!")
