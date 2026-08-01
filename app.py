@@ -406,6 +406,9 @@ elif menu == "Chủ khách sạn":
                 with tab1:
                     st.caption("So với trung bình hệ thống & đối thủ trực tiếp theo từng tiêu chí")
 
+                    # Lấy tên khách sạn thực tế đã chọn (thay cho "KS này")
+                    current_hotel_name = hotel_row.get("Hotel_Name", "Khách sạn")
+
                     # Các tiêu chí đánh giá
                     criteria = ['Location', 'Cleanliness', 'Service', 'Facilities', 'Value_for_money']
                     
@@ -425,21 +428,22 @@ elif menu == "Chủ khách sạn":
                         sys_scores.append(round(float(val_sys), 2))
                         competitor_scores.append(round(float(val_comp), 2))
 
-                    # 1. Biểu đồ cột so sánh tiêu chí
+                    # 1. Biểu đồ cột so sánh tiêu chí (Dùng tên KS đã chọn thay cho "KS này")
                     chart_df = pd.DataFrame({
                         'Tiêu chí': criteria,
-                        'KS này': ks_scores,
+                        current_hotel_name: ks_scores,
                         'Hệ thống': sys_scores,
                         'Đối thủ': competitor_scores
                     }).set_index('Tiêu chí')
                     
+                    # stack=False bắt buộc các cột đứng KẾ NHAU (không bị chồng lên mốc 25)
                     st.bar_chart(chart_df, stack=False)
 
                     # 2. Bảng thống kê chi tiết các tiêu chí
                     win_counts = ["5/5" if ks >= comp else "4/5" for ks, comp in zip(ks_scores, competitor_scores)]
                     table_df = pd.DataFrame({
                         "Tiêu chí": criteria,
-                        "KS này": [f"{v:.2f}" for v in ks_scores],
+                        current_hotel_name: [f"{v:.2f}" for v in ks_scores],
                         "Hệ thống": [f"{v:.2f}" for v in sys_scores],
                         "Đối thủ": [f"{v:.2f}" for v in competitor_scores],
                         "Thắng": win_counts
