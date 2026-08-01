@@ -28,9 +28,9 @@ def download_models_from_drive():
     if not (os.path.exists(path_knn) and os.path.exists(path_cosine)):
         try:
             # Tải toàn bộ nội dung trong thư mục Drive về folder MODEL_DIR
-            gdown.download_folder(url=FOLDER_URL, output=MODEL_DIR, quiet=False)
+            gdown.download_folder(url=FOLDER_URL, output=MODEL_DIR, quiet=True)
         except Exception as e:
-            st.error(f"⚠️ Lỗi khi tải model từ Google Drive: {e}")
+            print(f"Lỗi khi tải model: {e}")
 
 @st.cache_data
 def load_all_data():
@@ -117,7 +117,7 @@ if knn_model is not None and cosine_sim is not None:
     st.sidebar.caption("🟢 *Mô hình đã sẵn sàng cho gợi ý*")
 else:
     st.sidebar.caption("🔴 *Mô hình chưa sẵn sàng, vui lòng kiểm tra lại*")
-    
+
 st.sidebar.markdown("---")
 st.sidebar.caption("""
 **Nhóm7_DL07_K314**  
