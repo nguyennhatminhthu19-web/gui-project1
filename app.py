@@ -207,104 +207,78 @@ elif menu == "Phân công nhóm":
 elif menu == "Khách du lịch":
     st.title("Tìm khách sạn phù hợp với bạn")
     st.caption("Mô tả mong muốn của bạn, hệ thống sẽ gợi ý khách sạn phù hợp")
-    
-    col_star, col_trip = st.columns(2)
-    with col_star:
-        star = st.selectbox("Hạng sao", ["Bất kỳ", "3 sao", "4 sao", "5 sao"])
-    with col_trip:
-        trip = st.selectbox("Loại hình du lịch", ["Bất kỳ", "Cặp đôi", "Gia đình có em bé", "Nhóm", "Du lịch một mình"])
-        
-    user_desc = st.text_area(
-        "Mô tả khách sạn bạn muốn",
-        placeholder="Ví dụ: yên tĩnh, gần biển giá rẻ..."
-    )
-    
-    default_user_id = "101"
-    
-    if st.button("🔍 Tìm gợi ý", type="primary"):
-        st.markdown("### Kết quả gợi ý dành cho bạn")
-        
-        if df_info is not None and not df_info.empty:
-            filtered_df = df_info.copy()
-            
-            # 1. Lọc theo hạng sao
-            if star != "Bất kỳ" and "Star_Rating" in filtered_df.columns:
-                star_num = int(star.split()[0])
-                filtered_df = filtered_df[filtered_df["Star_Rating"] == star_num]
-            
-            # 2. Lọc thông minh theo mô tả/địa điểm (Logic AND)
-            if user_desc.strip():
-                query_raw = user_desc.strip().lower()
-                
-                # Tạo chuỗi tìm kiếm từ Tên + Địa chỉ
-                search_text = (
-                    filtered_df.get("Hotel_Name", "").fillna("").astype(str) + " " + 
-                    filtered_df.get("Hotel_Address", "").fillna("").astype(str)
-                ).str.lower()
-                
-                # BƯỚC 2A: Thử tìm nguyên cụm từ trước
-                mask = search_text.str.contains(query_raw, regex=False)
-                
-                # BƯỚC 2B: Nếu không khớp nguyên cụm, bắt buộc chứa TẤT CẢ các từ (AND Logic)
-                if not mask.any():
-                    words = query_raw.split()
-                    if words:
-                        mask = pd.Series(True, index=filtered_df.index)
-                        for w in words:
-                            mask = mask & search_text.str.contains(w, regex=False)
-                
-                # Áp dụng bộ lọc nếu tìm thấy kết quả
-                if mask.any():
-                    filtered_df = filtered_df[mask]
-                else:
-                    st.info("💡 Không tìm thấy khách sạn khớp chính xác từ khóa, hiển thị gợi ý tổng quan.")
 
-            if filtered_df.empty:
-                st.warning("⚠️ Không tìm thấy khách sạn nào phù hợp với bộ lọc.")
-            else:
-                # 3. Dùng KNN để xếp hạng (Rank) tập kết quả đã lọc
-                if knn_model is not None:
-                    try:
-                        hotel_id_col = "Hotel_ID" if "Hotel_ID" in filtered_df.columns else filtered_df.columns[0]
-                        
-                        predicted_scores = []
-                        for h_id in filtered_df[hotel_id_col]:
-                            pred = knn_model.predict(uid=str(default_user_id), iid=str(h_id))
-                            predicted_scores.append(pred.est)
-                        
-                        filtered_df["Predicted_Score"] = predicted_scores
-                        top_results = filtered_df.sort_values(by="Predicted_Score", ascending=False).head(5)
-                    except Exception as e:
-                        st.warning(f"⚠️ Lỗi tính điểm KNN ({e}), hiển thị danh sách mặc định.")
-                        top_results = filtered_df.head(5)
-                else:
-                    top_results = filtered_df.head(5)
-                
-                # 4. Hiển thị kết quả
-                for _, row in top_results.iterrows():
-                    h_name = row.get("Hotel_Name", "Tên khách sạn")
-                    h_address = row.get("Hotel_Address", "Địa chỉ")
-                    
-                    # Xử lý hiển thị Hạng sao
-                    raw_star = row.get("Star_Rating")
-                    h_star = int(raw_star) if (pd.notna(raw_star) and str(raw_star).replace('.','').isdigit()) else "N/A"
-                    
-                    # Xử lý hiển thị Điểm đánh giá
-                    raw_score = row.get("Total_Score", row.get("Score"))
-                    h_score = round(float(raw_score), 1) if pd.notna(raw_score) else "Chưa có"
-                    
-                    pred_val = round(row.get("Predicted_Score", 0), 2)
-                    
-                    with st.container(border=True):
-                        c1, c2 = st.columns([4, 1])
-                        with c1:
-                            st.subheader(h_name)
-                            st.caption(f"📍 **Địa chỉ:** {h_address} | ⭐ **Hạng:** {h_star} sao | 🏆 **Đánh giá TB:** {h_score}/10")
-                            st.caption(f"Phù hợp loại hình: **{trip}**")
-                        with c2:
-                            st.metric(label="KNN Score", value=f"{pred_val}/10")
+    col1, col2 = st.columns(2)
+    with col1:
+        star_option = st.selectbox("Hạng sao", ["Bất kỳ", "1 sao", "2 sao", "3 sao", "4 sao", "5 sao"])
+    with col2:
+        trip_option = st.selectbox("Loại hình du lịch", ["Bất kỳ", "Cặp đôi", "Gia đình", "Đơn thân", "Nhóm bạn"])
+
+    user_desc = st.text_area("Mô tả khách sạn bạn muốn", placeholder="Ví dụ: yên tĩnh, gần biển giá rẻ...")
+
+    if st.button("🔍 Tìm gợi ý", type="primary"):
+        filtered_df = df_info.copy()
+
+        # ---------------------------------------------------------
+        # 1. XỬ LÝ BỘ LỌC HẠNG SAO (Sử dụng cột 'hotel rank')
+        # ---------------------------------------------------------
+        if star_option != "Bất kỳ":
+            # Tách lấy phần số từ chuỗi selectbox (VD: "5 sao" -> 5.0)
+            target_star = float(star_option.split()[0])
+            
+            # Chuyển đổi cột 'hotel rank' về dạng số để so sánh chính xác
+            filtered_df['hotel rank'] = pd.to_numeric(filtered_df['hotel rank'], errors='coerce')
+            filtered_df = filtered_df[filtered_df['hotel rank'] == target_star]
+
+        # ---------------------------------------------------------
+        # 2. TÍNH ĐỘ PHÙ HỢP % (Chuyển Cosine Score sang %)
+        # ---------------------------------------------------------
+        # Lưu ý: Bạn thay 'cosine_score' bằng đúng tên cột chứa điểm Cosine Similarity trong dataframe của bạn
+        if 'cosine_score' in filtered_df.columns:
+            filtered_df['match_percent'] = (filtered_df['cosine_score'] * 100).round(1)
+        elif 'similarity_score' in filtered_df.columns:
+            filtered_df['match_percent'] = (filtered_df['similarity_score'] * 100).round(1)
         else:
-            st.error("Chưa nạp được dữ liệu `hotel_info_clean.csv`!")
+            filtered_df['match_percent'] = 85.0  # Điểm mặc định nếu chưa tính được
+
+        # Lấy Top kết quả
+        top_results = filtered_df.head(10)
+
+        # ---------------------------------------------------------
+        # 3. HIỂN THỊ KẾT QUẢ CARD KHÁCH SẠN
+        # ---------------------------------------------------------
+        st.subheader("Kết quả gợi ý dành cho bạn")
+        
+        if top_results.empty:
+            st.warning("Không tìm thấy khách sạn phù hợp với tiêu chí lọc của bạn. Vui lòng thử chọn 'Bất kỳ' hạng sao!")
+        else:
+            for idx, row in top_results.iterrows():
+                # Xử lý hiển thị Hạng sao từ cột 'hotel rank'
+                star_val = row.get('hotel rank', None)
+                if pd.notna(star_val) and star_val > 0:
+                    star_display = f"{int(star_val)} sao"
+                else:
+                    star_display = "N/A sao"
+                
+                # Lấy điểm Đánh giá TB & Độ phù hợp (%)
+                rating_val = row.get('rating', row.get('average_score', 'N/A'))
+                match_pct = row.get('match_percent', 0)
+
+                with st.container():
+                    c_info, c_score = st.columns([3, 1])
+                    
+                    with c_info:
+                        st.markdown(f"### {row.get('hotel_name', 'Tên khách sạn')}")
+                        st.write(f"📍 **Địa chỉ:** {row.get('address', 'Đang cập nhật')}")
+                        st.write(f"⭐ **Hạng:** {star_display} | 🏆 **Đánh giá TB:** {rating_val}/10")
+                        st.write(f"Phù hợp loại hình: **{trip_option}**")
+                        
+                    with c_score:
+                        # Hiển thị % Độ phù hợp thay vì KNN Score / 10
+                        st.caption("Độ phù hợp")
+                        st.markdown(f"<h2 style='color: #FF4B4B;'>{match_pct}%</h2>", unsafe_allow_html=True)
+                    
+                    st.divider()
 
 # ---------------------------------------------------------
 # 7. Màn hình: CHỦ KHÁCH SẠN
