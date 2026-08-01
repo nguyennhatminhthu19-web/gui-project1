@@ -433,7 +433,7 @@ elif menu == "Chủ khách sạn":
                         'Đối thủ': competitor_scores
                     }).set_index('Tiêu chí')
                     
-                    st.bar_chart(chart_df)
+                    st.bar_chart(chart_df, stack=False)
 
                     # 2. Bảng thống kê chi tiết các tiêu chí
                     win_counts = ["5/5" if ks >= comp else "4/5" for ks, comp in zip(ks_scores, competitor_scores)]
