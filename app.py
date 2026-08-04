@@ -149,7 +149,7 @@ elif menu == "Business problem":
     st.caption("Chúng tôi xây dựng 2 mô hình gợi ý khách sạn: Content-based và Collaborative, đồng thời cung cấp insight cho chủ khách sạn")
 
     # Gợi ý theo nội dung (Content-based)
-    with st.expander("📄 Gợi ý theo nội dung (Content-based)", expanded=True):
+    with st.expander("📄 Content-based cho **Chủ khách sạn**", expanded=True):
         st.markdown("**Thư viện sử dụng:** `Gensim` · `TfidfVectorizer` · `cosine_similarity` (scikit-learn)")
         st.markdown("---")
         st.markdown("#### 🎯 Mô hình được lựa chọn: Cosine Similarity")
@@ -165,7 +165,7 @@ elif menu == "Business problem":
             st.image("overlap_gensimcosine.png", caption="Độ tương đồng giữa cosine-sim và Gensim")
 
     # Gợi ý theo hành vi (Collaborative)    
-    with st.expander("🤝 Gợi ý theo hành vi (Collaborative)", expanded=True):
+    with st.expander("🤝Collaborative cho **Khách du lịch**", expanded=True):
         st.markdown("**Thư viện sử dụng:** `pyspark.ml ALS (Big Data)`  ·  `surprise KNNWithMeans`")
         st.markdown("---")
         st.markdown("#### 🎯 Mô hình được lựa chọn: KNNWithMeans")
