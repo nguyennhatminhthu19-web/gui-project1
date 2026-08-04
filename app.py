@@ -202,24 +202,84 @@ elif menu == "Phân công nhóm":
     st.table(df_team)
 
 # ---------------------------------------------------------
-# 6. Màn hình: KHÁCH DU LỊCH (Kết hợp Tìm từ khóa chuẩn + KNN Ranking)
+# 6. Màn hình: KHÁCH DU LỊCH (Kết hợp Tìm từ khóa chuẩn + KNN Ranking + Hover & Modal)
 # ---------------------------------------------------------
 elif menu == "Khách du lịch":
+    # 1. Thêm CSS Custom cho hiệu ứng Hover hiện Popup Xem nhanh
+    st.markdown("""
+    <style>
+        .tooltip-container {
+            position: relative;
+            display: inline-block;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+        .tooltip-container .tooltip-text {
+            visibility: hidden;
+            width: 350px;
+            background-color: #1e1e2f;
+            color: #fff;
+            text-align: left;
+            border-radius: 8px;
+            padding: 12px;
+            position: absolute;
+            z-index: 999;
+            bottom: 110%; 
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.3s;
+            box-shadow: 0px 8px 16px rgba(0,0,0,0.3);
+            font-size: 0.85rem;
+            line-height: 1.4;
+        }
+        .tooltip-container:hover .tooltip-text {
+            visibility: visible;
+            opacity: 1;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+    # 2. Hàm hiển thị Dialog Modal khi bấm "Xem phòng"
+    @st.dialog("🏨 Chi Tiết Khách Sạn & Xác Nhận Đặt Phòng", width="large")
+    def show_hotel_modal(hotel_data):
+        st.subheader(hotel_data.get('Hotel_Name', 'Khách sạn'))
+        st.caption(f"📍 {hotel_data.get('Hotel_Address', 'Chưa rõ địa chỉ')}")
+        
+        t1, t2 = st.tabs(["🛏️ Thông tin & Phòng", "📝 Điền Thông Tin Đặt Phòng"])
+        
+        with t1:
+            st.markdown("**Mô tả chi tiết:**")
+            st.write(hotel_data.get('Hotel_Description', 'Đang cập nhật mô tả...'))
+            st.divider()
+            
+            st.markdown("**Danh Sách Các Loại Phòng Tham Khảo:**")
+            col_p1, col_p2 = st.columns([3, 1])
+            with col_p1:
+                st.write("• **Phòng Superior (Tiêu chuẩn)**")
+                st.write("• **Phòng Deluxe (Cao cấp)**")
+                st.write("• **Phòng Suite (Gia đình/Đặc biệt)**")
+            with col_p2:
+                st.markdown("<span style='color: #FF4B4B; font-weight: bold;'>~ 1.500.000 đ</span>", unsafe_allow_html=True)
+                st.markdown("<span style='color: #FF4B4B; font-weight: bold;'>~ 2.200.000 đ</span>", unsafe_allow_html=True)
+                st.markdown("<span style='color: #FF4B4B; font-weight: bold;'>~ 3.500.000 đ</span>", unsafe_allow_html=True)
+
+        with t2:
+            st.text_input("Họ và tên người đặt")
+            st.text_input("Số điện thoại")
+            st.date_input("Ngày nhận phòng")
+            if st.button("✅ Xác nhận đặt phòng", type="primary", use_container_width=True):
+                st.success("Đã ghi nhận! Bộ phận chăm sóc khách hàng sẽ liên hệ với bạn sớm nhất.")
+
+    # 3. Giao diện chính của tab
     st.title("Tìm khách sạn phù hợp với bạn")
     st.caption("Mô tả mong muốn của bạn, hệ thống sẽ gợi ý khách sạn phù hợp")
 
-    # --- BỔ SUNG: Lấy TOÀN BỘ danh sách Quốc gia có trong file ---
     try:
         # Lấy tất cả quốc gia duy nhất từ cột Nationality, loại bỏ giá trị rỗng/NaN
-        unique_nats = df_comment['Nationality'].dropna().astype(str).str.strip().unique()
+        unique_nats = df_comments['Nationality'].dropna().astype(str).str.strip().unique()
         nationality_list = ["Bất kỳ"] + sorted([nat for nat in unique_nats if nat and nat.lower() != 'nan'])
     except:
-        # Phòng hờ trường hợp bạn khai báo là df_comments (có chữ s)
-        try:
-            unique_nats = df_comments['Nationality'].dropna().astype(str).str.strip().unique()
-            nationality_list = ["Bất kỳ"] + sorted([nat for nat in unique_nats if nat and nat.lower() != 'nan'])
-        except:
-            nationality_list = ["Bất kỳ"]
+        nationality_list = ["Bất kỳ"]
 
     col1, col2, col3 = st.columns(3)
     with col1:
@@ -227,7 +287,6 @@ elif menu == "Khách du lịch":
     with col2:
         trip_option = st.selectbox("Loại hình du lịch", ["Bất kỳ", "Cặp đôi", "Gia đình", "Đơn thân", "Nhóm bạn"])
     with col3:
-        # --- BỔ SUNG: Widget chọn Quốc gia ---
         nationality_option = st.selectbox("Quốc gia của bạn", nationality_list)
 
     user_desc = st.text_area("Mô tả khách sạn bạn muốn", placeholder="Ví dụ: yên tĩnh, gần biển giá rẻ...")
@@ -288,10 +347,13 @@ elif menu == "Khách du lịch":
 
         # Lấy Top 5 kết quả phù hợp nhất
         top_results = filtered_df.head(5)
+        st.session_state['current_results'] = top_results # Lưu vào state để hiển thị lại nút bấm
 
-        # ---------------------------------------------------------
-        # 3. HIỂN THỊ KẾT QUẢ CARD KHÁCH SẠN
-        # ---------------------------------------------------------
+    # ---------------------------------------------------------
+    # 3. HIỂN THỊ KẾT QUẢ CARD KHÁCH SẠN (Với Tooltip & Button)
+    # ---------------------------------------------------------
+    if 'current_results' in st.session_state:
+        top_results = st.session_state['current_results']
         st.subheader("Kết quả gợi ý dành cho bạn")
         
         if top_results.empty:
@@ -302,6 +364,7 @@ elif menu == "Khách du lịch":
                 hotel_name = row.get('Hotel_Name', 'Chưa có tên')
                 address = row.get('Hotel_Address', 'Địa chỉ đang cập nhật')
                 total_score = row.get('Total_Score', 'N/A')
+                desc_snippet = str(row.get('Hotel_Description', 'Đang cập nhật...'))[:150] + "..."
                 
                 # Hiển thị Hạng sao
                 star_val = row.get('Hotel_Rank_Numeric', row.get('Hotel_Rank', None))
@@ -320,20 +383,41 @@ elif menu == "Khách du lịch":
                 if match_pct > 98.5:
                     match_pct = 98.5
 
-                # Render Card Giao diện
+                # Tích hợp Hover Tooltip qua HTML
+                hover_html = f"""
+                <div class="tooltip-container">
+                    <h3 style="margin:0; color:#1E88E5;">🏨 {hotel_name}</h3>
+                    <div class="tooltip-text">
+                        <b>📌 Trích lược nhanh:</b><br/>
+                        <b>Đánh giá:</b> {total_score}/10 ⭐<br/>
+                        <b>Mô tả:</b> {desc_snippet}<br/>
+                        <hr style="margin: 5px 0; border-color: #555;">
+                        <i style="color:#FFD700;">💡 Bấm "Xem & Đặt ngay" để xem các hạng phòng.</i>
+                    </div>
+                </div>
+                """
+
+                # Render Card Giao diện (Chia làm 3 cột để nhét nút bấm vào)
                 with st.container():
-                    c_info, c_score = st.columns([3, 1])
+                    c_info, c_score, c_btn = st.columns([2.5, 1, 1.2])
                     
                     with c_info:
-                        st.markdown(f"### {hotel_name}")
+                        # Thay vì st.markdown(f"### {hotel_name}"), ta render khối HTML chứa tooltip
+                        st.markdown(hover_html, unsafe_allow_html=True)
                         st.write(f"📍 **Địa chỉ:** {address}")
-                        # --- CẬP NHẬT: Bổ sung hiển thị thông tin Quốc gia trên Card ---
                         st.write(f"⭐ **Hạng:** {star_display} | 🏆 **Đánh giá TB:** {total_score}/10")
                         st.write(f"Phù hợp loại hình: **{trip_option}** | Quốc gia du khách: **{nationality_option}**")
                         
                     with c_score:
                         st.caption("Độ phù hợp")
-                        st.markdown(f"<h2 style='color: #FF4B4B;'>{match_pct}%</h2>", unsafe_allow_html=True)
+                        st.markdown(f"<h2 style='color: #FF4B4B; margin:0;'>{match_pct}%</h2>", unsafe_allow_html=True)
+                    
+                    with c_btn:
+                        st.write("") # Tẩy bớt khoảng trắng cho nút đẩy xuống giữa thẻ
+                        st.write("")
+                        # Bấm nút gọi hàm Modal
+                        if st.button("👉 Xem & Đặt ngay", key=f"btn_book_{idx}", type="secondary"):
+                            show_hotel_modal(row.to_dict())
                     
                     st.divider()
 
