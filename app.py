@@ -208,11 +208,20 @@ elif menu == "Khách du lịch":
     st.title("Tìm khách sạn phù hợp với bạn")
     st.caption("Mô tả mong muốn của bạn, hệ thống sẽ gợi ý khách sạn phù hợp")
 
-    col1, col2 = st.columns(2)
+    # --- BỔ SUNG: Lấy danh sách Quốc gia từ df_comment ---
+    if 'df_comment' in locals() and 'Nationality' in df_comment.columns:
+        nationality_list = ["Bất kỳ"] + sorted(df_comment['Nationality'].dropna().unique().tolist())
+    else:
+        nationality_list = ["Bất kỳ", "United Kingdom", "United States", "Australia", "Vietnam"]
+
+    col1, col2, col3 = st.columns(3)
     with col1:
         star_option = st.selectbox("Hạng sao", ["Bất kỳ", "1 sao", "2 sao", "3 sao", "4 sao", "5 sao"])
     with col2:
         trip_option = st.selectbox("Loại hình du lịch", ["Bất kỳ", "Cặp đôi", "Gia đình", "Đơn thân", "Nhóm bạn"])
+    with col3:
+        # --- BỔ SUNG: Widget chọn Quốc gia ---
+        nationality_option = st.selectbox("Quốc gia của bạn", nationality_list)
 
     user_desc = st.text_area("Mô tả khách sạn bạn muốn", placeholder="Ví dụ: yên tĩnh, gần biển giá rẻ...")
 
@@ -234,8 +243,15 @@ elif menu == "Khách du lịch":
         # ---------------------------------------------------------
         # 2. TÍNH ĐIỂM DỰA TRÊN TỪ KHÓA & MA TRẬN COSINE_SIM
         # ---------------------------------------------------------
-        if user_desc.strip():
-            keywords = [kw.lower() for kw in user_desc.split() if len(kw) > 1]
+        if user_desc.strip() or nationality_option != "Bất kỳ" or trip_option != "Bất kỳ":
+            # --- CẬP NHẬT: Đưa thêm thông tin Quốc gia & Loại hình du lịch vào danh sách từ khóa khớp ---
+            search_text = user_desc
+            if nationality_option != "Bất kỳ":
+                search_text += f" {nationality_option}"
+            if trip_option != "Bất kỳ":
+                search_text += f" {trip_option}"
+
+            keywords = [kw.lower() for kw in search_text.split() if len(kw) > 1]
             
             def calculate_score(row):
                 # Gộp văn bản từ Hotel_Name, Hotel_Address, Hotel_Description để khớp từ khóa
@@ -304,8 +320,9 @@ elif menu == "Khách du lịch":
                     with c_info:
                         st.markdown(f"### {hotel_name}")
                         st.write(f"📍 **Địa chỉ:** {address}")
+                        # --- CẬP NHẬT: Bổ sung hiển thị thông tin Quốc gia trên Card ---
                         st.write(f"⭐ **Hạng:** {star_display} | 🏆 **Đánh giá TB:** {total_score}/10")
-                        st.write(f"Phù hợp loại hình: **{trip_option}**")
+                        st.write(f"Phù hợp loại hình: **{trip_option}** | Quốc gia du khách: **{nationality_option}**")
                         
                     with c_score:
                         st.caption("Độ phù hợp")
