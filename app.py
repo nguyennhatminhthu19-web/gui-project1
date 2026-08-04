@@ -286,8 +286,8 @@ elif menu == "Khách du lịch":
             else:
                 filtered_df['match_score'] = 0.8
 
-        # Lấy Top 10 kết quả phù hợp nhất
-        top_results = filtered_df.head(10)
+        # Lấy Top 5 kết quả phù hợp nhất
+        top_results = filtered_df.head(5)
 
         # ---------------------------------------------------------
         # 3. HIỂN THỊ KẾT QUẢ CARD KHÁCH SẠN
