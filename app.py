@@ -272,7 +272,7 @@ elif menu == "Khách du lịch":
 
     # 3. Giao diện chính của tab
     st.title("Tìm khách sạn phù hợp với bạn")
-    st.caption("Mô tả mong muốn của bạn, hệ thống sẽ gợi ý khách sạn phù hợp")
+    st.caption("Mô tả mong muốn của bạn, hệ thống sẽ gợi ý khách sạn phù hợp dựa trên các khách hàng tương tự đã đánh giá trước đó.")
 
     try:
         # Lấy tất cả quốc gia duy nhất từ cột Nationality, loại bỏ giá trị rỗng/NaN
