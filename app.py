@@ -208,11 +208,18 @@ elif menu == "Khách du lịch":
     st.title("Tìm khách sạn phù hợp với bạn")
     st.caption("Mô tả mong muốn của bạn, hệ thống sẽ gợi ý khách sạn phù hợp")
 
-    # --- BỔ SUNG: Lấy danh sách Quốc gia từ df_comment ---
-    if 'df_comment' in locals() and 'Nationality' in df_comment.columns:
-        nationality_list = ["Bất kỳ"] + sorted(df_comment['Nationality'].dropna().unique().tolist())
-    else:
-        nationality_list = ["Bất kỳ", "United Kingdom", "United States", "Australia", "Vietnam"]
+    # --- BỔ SUNG: Lấy TOÀN BỘ danh sách Quốc gia có trong file ---
+    try:
+        # Lấy tất cả quốc gia duy nhất từ cột Nationality, loại bỏ giá trị rỗng/NaN
+        unique_nats = df_comment['Nationality'].dropna().astype(str).str.strip().unique()
+        nationality_list = ["Bất kỳ"] + sorted([nat for nat in unique_nats if nat and nat.lower() != 'nan'])
+    except:
+        # Phòng hờ trường hợp bạn khai báo là df_comments (có chữ s)
+        try:
+            unique_nats = df_comments['Nationality'].dropna().astype(str).str.strip().unique()
+            nationality_list = ["Bất kỳ"] + sorted([nat for nat in unique_nats if nat and nat.lower() != 'nan'])
+        except:
+            nationality_list = ["Bất kỳ"]
 
     col1, col2, col3 = st.columns(3)
     with col1:
