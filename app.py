@@ -8,6 +8,74 @@ import streamlit as st
 import surprise
 from surprise import dump
 import gdown
+import pandas as pd
+import re
+from pyvi.ViTokenizer import tokenize
+from collections import Counter
+import streamlit as st
+
+# 1. LOAD DICTIONARIES (Sử dụng cache để không bị load lại file txt liên tục)
+@st.cache_data
+def load_dicts():
+    # Stopwords
+    with open('files/vietnamese-stopwords.txt', 'r', encoding='utf-8') as f:
+        stop_words = f.read().split('\n')
+    
+    # Emoji
+    emoji_dict = {}
+    with open('files/emojicon.txt', 'r', encoding='utf-8') as f:
+        for line in f.read().split('\n'):
+            if '\t' in line: 
+                k, v = line.split('\t')
+                emoji_dict[k] = v
+            
+    # Teencode
+    teen_dict = {}
+    with open('files/teencode.txt', 'r', encoding='utf-8') as f:
+        for line in f.read().split('\n'):
+            if '\t' in line: 
+                k, v = line.split('\t')
+                teen_dict[k] = v
+            
+    # Wrong words list
+    with open('files/wrong-word.txt', 'r', encoding='utf-8') as f:
+        wrong_lst = [w.strip() for w in f.read().split('\n') if w.strip() != '']
+
+    return stop_words, emoji_dict, teen_dict, wrong_lst
+
+# Nạp từ điển ngay khi chạy app
+try:
+    STOP_WORDS, EMOJI_DICT, TEEN_DICT, WRONG_LST = load_dicts()
+except FileNotFoundError as e:
+    st.error(f"⚠️ Thiếu file từ điển: {e}. Vui lòng đảm bảo 4 file txt nằm cùng thư mục.")
+
+# 2. HÀM CLEAN VĂN BẢN
+def clean_review_text(text):
+    if not isinstance(text, str) or text.strip() == '': return ''
+    text = text.lower()
+    for emoji, word in EMOJI_DICT.items():
+        text = text.replace(emoji, ' ' + word + ' ')
+    words = text.split()
+    words = [TEEN_DICT.get(w, w) for w in words]
+    text = tokenize(' '.join(words))
+    tokens = [re.sub(r'[^\w]', '', t) for t in text.split()]
+    tokens = [re.sub(r'\d+', '', t) for t in tokens if t.strip() != '']
+    tokens = [t for t in tokens if t not in WRONG_LST and t not in STOP_WORDS]
+    return ' '.join(tokens)
+
+# 3. HÀM PHÂN TÍCH TỪ KHÓA
+def get_keyword_analysis(df_hotel_reviews, top_n=15):
+    # Đảm bảo có cột Score để lọc
+    if 'Score' not in df_hotel_reviews.columns:
+        return {}, {}
+        
+    positive = df_hotel_reviews[df_hotel_reviews['Score'] >= 8]['Review_Content_Clean']
+    negative = df_hotel_reviews[df_hotel_reviews['Score'] <= 5]['Review_Content_Clean']
+
+    pos_words = Counter(' '.join(positive).split()).most_common(top_n)
+    neg_words = Counter(' '.join(negative).split()).most_common(top_n)
+
+    return dict(pos_words), dict(neg_words)
 
 # ---------------------------------------------------------
 # 1. Cấu hình đường dẫn & Load Dữ liệu / Model
@@ -514,10 +582,7 @@ elif menu == "Chủ khách sạn":
                 with tab1:
                     st.caption("So với trung bình hệ thống & đối thủ trực tiếp theo từng tiêu chí")
 
-                    # Lấy tên khách sạn thực tế đã chọn (thay cho "KS này")
                     current_hotel_name = hotel_row.get("Hotel_Name", "Khách sạn")
-
-                    # Các tiêu chí đánh giá
                     criteria = ['Location', 'Cleanliness', 'Service', 'Facilities', 'Value_for_money']
                     
                     ks_scores = []
@@ -536,7 +601,6 @@ elif menu == "Chủ khách sạn":
                         sys_scores.append(round(float(val_sys), 2))
                         competitor_scores.append(round(float(val_comp), 2))
 
-                    # 1. Biểu đồ cột so sánh tiêu chí (Dùng tên KS đã chọn thay cho "KS này")
                     chart_df = pd.DataFrame({
                         'Tiêu chí': criteria,
                         current_hotel_name: ks_scores,
@@ -544,10 +608,8 @@ elif menu == "Chủ khách sạn":
                         'Đối thủ': competitor_scores
                     }).set_index('Tiêu chí')
                     
-                    # stack=False bắt buộc các cột đứng KẾ NHAU (không bị chồng lên mốc 25)
                     st.bar_chart(chart_df, stack=False)
 
-                    # 2. Bảng thống kê chi tiết các tiêu chí
                     win_counts = ["5/5" if ks >= comp else "4/5" for ks, comp in zip(ks_scores, competitor_scores)]
                     table_df = pd.DataFrame({
                         "Tiêu chí": criteria,
@@ -558,7 +620,6 @@ elif menu == "Chủ khách sạn":
                     })
                     st.dataframe(table_df, use_container_width=True, hide_index=True)
 
-                    # 3. Khối Insight
                     wins_total = sum(1 for ks, comp in zip(ks_scores, competitor_scores) if ks >= comp)
                     st.success(f"💡 **Thắng cả 5 đối thủ ở {wins_total}/5 tiêu chí**")
                     
@@ -575,25 +636,17 @@ elif menu == "Chủ khách sạn":
                     current_h_name = hotel_row.get("Hotel_Name", "Khách sạn")
                     current_h_id = hotel_row.get("Hotel_ID")
 
-                    # ---------------------------------------------------------
-                    # 1. LỌC COMMENT THEO HOTEL ID (ĐÃ CHUẨN HÓA KIỂU DỮ LIỆU)
-                    # ---------------------------------------------------------
                     hotel_comments = pd.DataFrame()
 
                     if 'df_comments' in locals() and not df_comments.empty and current_h_id is not None:
-                        # Xử lý tên cột có khoảng trắng "Hotel ID" hoặc "Hotel_ID"
                         id_col = "Hotel ID" if "Hotel ID" in df_comments.columns else ("Hotel_ID" if "Hotel_ID" in df_comments.columns else None)
                         
                         if id_col:
-                            # Ép kiểu cả 2 về String và strip khoảng trắng để so sánh chính xác tuyệt đối
-                            str_target_id = str(current_h_id).split('.')[0].strip() # Loại bỏ phần .0 nếu có
+                            str_target_id = str(current_h_id).split('.')[0].strip()
                             hotel_comments = df_comments[
                                 df_comments[id_col].astype(str).str.split('.').str[0].str.strip() == str_target_id
                             ]
 
-                    # ---------------------------------------------------------
-                    # 2. XỬ LÝ CHỈ SỐ METRICS
-                    # ---------------------------------------------------------
                     comment_score_col = "Score" if (not hotel_comments.empty and "Score" in hotel_comments.columns) else None
                     
                     if not hotel_comments.empty and comment_score_col:
@@ -606,7 +659,6 @@ elif menu == "Chủ khách sạn":
                         excellent_pct = int(min(98, max(50, avg_rev_score * 9.5)))
                         total_reviews_display = int(hotel_row.get("comments_count", total_reviews if 'total_reviews' in locals() else 0))
 
-                    # Hiển thị 3 Metric
                     rm1, rm2, rm3 = st.columns(3)
                     rm1.metric(label="Tổng số review", value=f"{total_reviews_display:,}")
                     rm2.metric(label="Điểm trung bình", value=f"{avg_rev_score}")
@@ -614,32 +666,23 @@ elif menu == "Chủ khách sạn":
 
                     st.markdown("#### Review gần đây")
 
-                    # ---------------------------------------------------------
-                    # 3. HIỂN THỊ THÔNG TIN COMMENT CHI TIẾT
-                    # ---------------------------------------------------------
                     if not hotel_comments.empty:
                         sample_comments = hotel_comments.head(5)
 
                         for _, row in sample_comments.iterrows():
-                            # Tên người đánh giá
                             r_user = str(row.get("Reviewer Name", row.get("Reviewer ID", "Khách hàng Agoda")))
                             if pd.isna(r_user) or r_user == "nan": 
                                 r_user = "Khách hàng Agoda"
 
-                            # Điểm số
                             r_score = row.get("Score", avg_rev_score)
-
-                            # Tiêu đề review
                             r_title = str(row.get("Title", "Đánh giá dịch vụ"))
                             if pd.isna(r_title) or r_title == "nan": 
                                 r_title = "Đánh giá dịch vụ"
 
-                            # Nội dung review (Ưu tiên Review_Content -> Body -> Review_Content_Clean)
                             r_text = str(row.get("Review_Content", row.get("Body", row.get("Review_Content_Clean", ""))))
                             if pd.isna(r_text) or r_text == "nan": 
                                 r_text = "Khách hàng không để lại bình luận chi tiết."
 
-                            # Ngày và Loại nhóm khách
                             r_date = str(row.get("Review Date", "Gần đây")) if pd.notna(row.get("Review Date")) else "Gần đây"
                             r_group = str(row.get("Group Name", "Khách du lịch")) if pd.notna(row.get("Group Name")) else "Khách du lịch"
                             r_room = str(row.get("Room Type", "")) if pd.notna(row.get("Room Type")) else ""
@@ -660,18 +703,16 @@ elif menu == "Chủ khách sạn":
                         st.info(f"Chưa có bài đánh giá chi tiết nào cho **{current_h_name}** trong dữ liệu.")
 
                 # =========================================================
-                # TAB 3: BENCHMARK ĐỐI THỦ (DÙNG COSINE SIMILARITY)
+                # TAB 3: BENCHMARK ĐỐI THỦ
                 # =========================================================
                 with tab3:
-                    st.subheader("🎯 Top 5 Khách sạn đối thủ tương tự nhất (Cosine Similarity)")
+                    st.subheader("🎯 Top 5 Khách sạn đối thủ tương tự nhất")
                     
-                    # 1. Lấy vị trí (index) của khách sạn được chọn trong df_info
                     hotel_idx_list = df_info[df_info[col_hotel_id_info] == selected_hotel_id].index
 
                     if not hotel_idx_list.empty:
                         hotel_idx = hotel_idx_list[0]
 
-                        # 2. Kiểm tra và lấy ma trận cosine_sim đã load ở đầu bài
                         sim_scores = []
                         if 'cosine_sim' in globals() and cosine_sim is not None:
                             sim_scores = list(enumerate(cosine_sim[hotel_idx]))
@@ -679,10 +720,8 @@ elif menu == "Chủ khách sạn":
                             sim_scores = list(enumerate(st.session_state['cosine_sim'][hotel_idx]))
 
                         if sim_scores:
-                            # Sắp xếp giảm dần theo điểm tương đồng Cosine
                             sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
                             
-                            # Bỏ qua chính nó (index trùng) và lấy top 5 đối thủ tương đồng nhất
                             top_sim_indices = []
                             top_sim_values = []
                             for idx_sim, score in sim_scores:
@@ -692,11 +731,9 @@ elif menu == "Chủ khách sạn":
                                 if len(top_sim_indices) == 5:
                                     break
 
-                            # Lấy thông tin 5 đối thủ từ df_info
                             top_competitors = df_info.iloc[top_sim_indices].copy()
                             top_competitors['Cosine_Similarity'] = top_sim_values
 
-                            # Tính toán các chỉ số so sánh (Metrics)
                             comp_avg_score = round(float(top_competitors[score_col].mean()), 2) if (score_col and score_col in top_competitors.columns) else 0.0
                             comp_avg_sim = round(float(sum(top_sim_values) / len(top_sim_values)), 3)
                             diff_score = round(score_val - comp_avg_score, 2)
@@ -707,9 +744,8 @@ elif menu == "Chủ khách sạn":
                             b3.metric("Độ tương đồng trung bình", f"{comp_avg_sim}")
 
                             st.markdown("---")
-                            st.markdown("#### 🏆 Danh sách 5 đối thủ cạnh tranh trực tiếp (Dựa trên Cosine Similarity)")
+                            st.markdown("#### 🏆 Danh sách 5 đối thủ cạnh tranh trực tiếp")
 
-                            # Lựa chọn các cột hiển thị ra bảng
                             cols_to_show = [col_hotel_name]
                             if 'Star_Rating' in top_competitors.columns:
                                 cols_to_show.append('Star_Rating')
@@ -722,6 +758,70 @@ elif menu == "Chủ khách sạn":
                             st.dataframe(top_competitors[cols_to_show], use_container_width=True, hide_index=True)
 
                         else:
-                            st.warning("⚠️ Không tìm thấy biến `cosine_sim`. Bạn hãy đảm bảo đã load/tính ma trận `cosine_sim` ở đầu file app.py nhé!")
+                            st.warning("⚠️ Không tìm thấy biến `cosine_sim`. Hãy đảm bảo đã load/tính ma trận `cosine_sim`!")
                     else:
                         st.error("⚠️ Không tìm thấy dữ liệu cho khách sạn này trong `df_info`!")
+                
+                # =========================================================
+                # 4. PHÂN TÍCH TỪ KHÓA & ĐÁNH GIÁ TỪ REVIEW (ĐOẠN CODE MỚI THÊM VÀO)
+                # =========================================================
+                st.divider()
+                st.subheader("📝 Phân tích Nội dung Đánh giá (Từ khóa & Cảm xúc)")
+                
+                if not hotel_comments.empty:
+                    # Lấy cột nội dung ưu tiên (tùy thuộc file csv của bạn có cột nào)
+                    text_col = "Review_Content_Clean" if "Review_Content_Clean" in hotel_comments.columns else ("Review_Content" if "Review_Content" in hotel_comments.columns else "Body")
+                    
+                    if text_col in hotel_comments.columns:
+                        # Gộp tất cả các text review lại thành 1 chuỗi để vẽ WordCloud
+                        all_reviews_text = " ".join(hotel_comments[text_col].dropna().astype(str).tolist())
+                        
+                        if all_reviews_text.strip():
+                            col_nlp1, col_nlp2 = st.columns(2)
+                            
+                            with col_nlp1:
+                                st.markdown("##### ☁️ Đám mây từ vựng (WordCloud)")
+                                try:
+                                    from wordcloud import WordCloud
+                                    import matplotlib.pyplot as plt
+                                    
+                                    wordcloud = WordCloud(
+                                        width=800, height=500, 
+                                        background_color='white', 
+                                        colormap='viridis',
+                                        max_words=100
+                                    ).generate(all_reviews_text)
+                                    
+                                    fig, ax = plt.subplots(figsize=(8, 5))
+                                    ax.imshow(wordcloud, interpolation='bilinear')
+                                    ax.axis("off")
+                                    st.pyplot(fig)
+                                except ImportError:
+                                    st.warning("⚠️ Chưa cài đặt thư viện `wordcloud`. Mở terminal chạy lệnh: `pip install wordcloud`")
+                                except Exception as e:
+                                    st.error(f"⚠️ Lỗi khi vẽ WordCloud: {e}")
+                                    
+                            with col_nlp2:
+                                st.markdown("##### 📊 Phân bổ Cảm xúc Khách hàng")
+                                score_col_nlp = "Score" if "Score" in hotel_comments.columns else None
+                                
+                                if score_col_nlp:
+                                    scores = pd.to_numeric(hotel_comments[score_col_nlp], errors='coerce').dropna()
+                                    if not scores.empty:
+                                        # Nhóm điểm lại để đếm: Tiêu cực (<5), Trung bình (5-7.9), Tích cực (8-10)
+                                        sentiment_bins = [0, 4.9, 7.9, 10]
+                                        sentiment_labels = ['Tiêu cực (<5)', 'Trung bình (5-7.9)', 'Tích cực (8-10)']
+                                        hotel_comments['Sentiment_Group'] = pd.cut(scores, bins=sentiment_bins, labels=sentiment_labels, include_lowest=True)
+                                        
+                                        sentiment_counts = hotel_comments['Sentiment_Group'].value_counts().sort_index()
+                                        st.bar_chart(sentiment_counts)
+                                    else:
+                                        st.info("Không đủ dữ liệu điểm số hợp lệ.")
+                                else:
+                                    st.info("Không có cột 'Score' để phân tích cảm xúc.")
+                        else:
+                            st.info("Dữ liệu bình luận trống sau khi làm sạch.")
+                    else:
+                        st.warning("Không tìm thấy cột chứa nội dung bình luận để phân tích (Review_Content / Body).")
+                else:
+                    st.info("Chưa có bình luận nào để phân tích từ khóa.")
