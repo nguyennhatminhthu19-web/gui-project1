@@ -780,7 +780,7 @@ elif menu == "Chủ khách sạn":
                             col_nlp1, col_nlp2 = st.columns(2)
                             
                             with col_nlp1:
-                                st.markdown("##### ☁️ Đám mây từ vựng (WordCloud)")
+                                st.markdown("##### ☁️ Những từ khóa nổi bật trong review")
                                 try:
                                     from wordcloud import WordCloud
                                     import matplotlib.pyplot as plt
@@ -802,7 +802,7 @@ elif menu == "Chủ khách sạn":
                                     st.error(f"⚠️ Lỗi khi vẽ WordCloud: {e}")
                                     
                             with col_nlp2:
-                                st.markdown("##### 📊 Phân bổ Cảm xúc Khách hàng")
+                                st.markdown("##### 📊 Phân bổ đánh giá của Khách hàng")
                                 score_col_nlp = "Score" if "Score" in hotel_comments.columns else None
                                 
                                 if score_col_nlp:
