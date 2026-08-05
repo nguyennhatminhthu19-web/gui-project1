@@ -4,3 +4,6 @@ plotly
 joblib
 scikit-surprise
 gdown
+pyvi
+wordcloud
+matplotlib
