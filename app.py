@@ -361,7 +361,7 @@ elif menu == "Khách du lịch":
             if st.button("✅ Xác nhận đặt phòng", type="primary", use_container_width=True):
                 st.success("Đã ghi nhận! Bộ phận chăm sóc khách hàng sẽ liên hệ với bạn sớm nhất.")
 
-    # 3. Hàm trợ giúp hiển thị danh sách khách sạn dạng Card
+    # 3. Hàm trợ giúp hiển thị danh sách khách sạn (Bấm vào Tên KS để đặt phòng)
     def render_hotel_cards(results_df, key_prefix="card"):
         if results_df.empty:
             st.warning("⚠️ Không tìm thấy khách sạn phù hợp với tiêu chí của bạn.")
@@ -371,7 +371,7 @@ elif menu == "Khách du lịch":
             hotel_name = row.get('Hotel_Name', 'Chưa có tên')
             address = row.get('Hotel_Address', 'Địa chỉ đang cập nhật')
             total_score = row.get('Total_Score', 'N/A')
-            desc_snippet = str(row.get('Hotel_Description', 'Đang cập nhật...'))[:150] + "..."
+            desc_snippet = str(row.get('Hotel_Description', 'Đang cập nhật...'))[:200] + "..."
             
             # Hạng sao
             star_val = row.get('Hotel_Rank_Numeric', row.get('Hotel_Rank', None))
@@ -386,35 +386,26 @@ elif menu == "Khách du lịch":
             if match_pct > 98.5:
                 match_pct = 98.5
 
-            # Dùng st.container(border=True) để tạo KHUNG GỢI Ý. CSS sẽ bắt sự kiện hover trên cái khung này.
+            # Dùng khung viền bọc lại cho từng khách sạn
             with st.container(border=True):
-                # Vì đã bỏ nút "Xem & Đặt ngay", giao diện giờ chỉ cần 2 cột cho thoáng
                 c_info, c_score = st.columns([3.5, 1])
                 
                 with c_info:
-                    # --- NÂNG CẤP 1: Tên khách sạn giờ là nút bấm (Mở Modal ngay khi click) ---
-                    if st.button(f"🏨 {hotel_name}", key=f"{key_prefix}_title_btn_{idx}", type="tertiary"):
+                    # --- NÚT BẤM CHÍNH LÀ TÊN KHÁCH SẠN ---
+                    # Khi bấm vào đây, Streamlit sẽ gọi hàm show_hotel_modal ngay lập tức
+                    if st.button(f"🏨 {hotel_name}", key=f"{key_prefix}_name_btn_{idx}", use_container_width=True):
                         show_hotel_modal(row.to_dict())
                     
-                    # --- NÂNG CẤP 2: Cục Tooltip ẩn được chèn chung với thông tin địa chỉ ---
-                    info_html = f"""
-                    <div style="position: relative;">
-                        <p style="margin: 3px 0;">📍 <b>Địa chỉ:</b> {address}</p>
-                        <p style="margin: 3px 0;">⭐ <b>Hạng:</b> {star_display} | 🏆 <b>Đánh giá TB:</b> {total_score}/10</p>
-                        
-                        <div class="tooltip-text">
-                            <b>📌 Trích lược nhanh:</b><br/>
-                            <b>Đánh giá:</b> {total_score}/10 ⭐<br/>
-                            <b>Mô tả:</b> {desc_snippet}<br/>
-                            <hr style="margin: 5px 0; border-color: #555;">
-                            <i style="color:#FFD700;">💡 Bấm vào Tên khách sạn phía trên để xem phòng & đặt ngay!</i>
-                        </div>
-                    </div>
-                    """
-                    st.markdown(info_html, unsafe_allow_html=True)
+                    # Các thông tin hiển thị bên dưới tên
+                    st.write(f"📍 **Địa chỉ:** {address}")
+                    st.write(f"⭐ **Hạng:** {star_display} | 🏆 **Đánh giá TB:** {total_score}/10")
+                    
+                    # Dùng expander để xem mô tả chi tiết nếu muốn
+                    with st.expander("📖 Xem mô tả tóm tắt"):
+                        st.write(desc_snippet)
                     
                 with c_score:
-                    st.write("") # Tạo khoảng trắng nhỏ đẩy điểm xuống giữa khung
+                    st.write("") # Căn lề
                     st.caption("Độ phù hợp")
                     st.markdown(f"<h2 style='color: #FF4B4B; margin:0;'>{match_pct}%</h2>", unsafe_allow_html=True)
 
