@@ -187,12 +187,12 @@ else:
 st.sidebar.markdown("---")
 st.sidebar.caption("""
 Đồ án tốt nghiệp Data Science - Trung tâm tin học - Trường Đại Học Khoa Học Tự Nhiên, ĐHQG-HCM
-Project: Recommender Systems
-Nhóm thực hiện:
-Nguyễn Thị Thúy Hằng  thuyhang0911@gmail.com
-Nguyễn Nhật Minh Thư  nguyen.nhatminhthu19@gmail.com
-Lê Ngọc Tuấn          lengoctuan04lkk@gmail.com
-Giảng viên hướng dẫn: Cô. Khuất Thùy Phương
+\nProject: Recommender Systems
+\nNhóm thực hiện:
+\nNguyễn Thị Thúy Hằng  thuyhang0911@gmail.com
+\nNguyễn Nhật Minh Thư  nguyen.nhatminhthu19@gmail.com
+\nLê Ngọc Tuấn          lengoctuan04lkk@gmail.com
+\nGiảng viên hướng dẫn: Cô. Khuất Thùy Phương
 """)
 
 # ---------------------------------------------------------
@@ -361,7 +361,7 @@ elif menu == "Khách du lịch":
             if st.button("✅ Xác nhận đặt phòng", type="primary", use_container_width=True):
                 st.success("Đã ghi nhận! Bộ phận chăm sóc khách hàng sẽ liên hệ với bạn sớm nhất.")
 
-    # 3. Hàm trợ giúp hiển thị danh sách khách sạn
+    # 3. Hàm trợ giúp hiển thị danh sách khách sạn (Dùng Callback chống văng)
     def render_hotel_cards(results_df, key_prefix="card"):
         if results_df.empty:
             st.warning("⚠️ Không tìm thấy khách sạn phù hợp với tiêu chí của bạn.")
@@ -373,26 +373,30 @@ elif menu == "Khách du lịch":
             total_score = row.get('Total_Score', 'N/A')
             desc_snippet = str(row.get('Hotel_Description', 'Đang cập nhật...'))[:200] + "..."
             
-            # Hạng sao
             star_val = row.get('Hotel_Rank_Numeric', row.get('Hotel_Rank', None))
             try:
                 star_display = f"{int(float(star_val))} sao" if pd.notna(star_val) else "Chưa xếp hạng"
             except:
                 star_display = "Chưa xếp hạng"
 
-            # Tính điểm % độ phù hợp
             raw_score = row.get('match_score', 0.5)
             match_pct = round(60.0 + (raw_score * 38.0), 1) if raw_score <= 1.0 else round(raw_score, 1)
-            if match_pct > 98.5:
-                match_pct = 98.5
+            if match_pct > 98.5: match_pct = 98.5
 
             with st.container(border=True):
                 c_info, c_score = st.columns([3.5, 1])
                 
                 with c_info:
-                    # BẤM VÀO TÊN KHÁCH SẠN -> Gọi trực tiếp show_hotel_modal gốc của bạn
-                    if st.button(f"🏨 {hotel_name}", key=f"{key_prefix}_name_btn_{idx}", use_container_width=True):
-                        show_hotel_modal(row.to_dict())
+                    # ==========================================
+                    # BÍ QUYẾT Ở ĐÂY: Dùng on_click và args
+                    # ==========================================
+                    st.button(
+                        label=f"🏨 {hotel_name}", 
+                        key=f"{key_prefix}_name_btn_{idx}", 
+                        use_container_width=True,
+                        on_click=show_hotel_modal,       # Gọi hàm ngay khi click
+                        args=(row.to_dict(),)            # Truyền dữ liệu khách sạn vào hàm
+                    )
                     
                     st.write(f"📍 **Địa chỉ:** {address}")
                     st.write(f"⭐ **Hạng:** {star_display} | 🏆 **Đánh giá TB:** {total_score}/10")
