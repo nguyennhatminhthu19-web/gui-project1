@@ -1,0 +1,11 @@
+{
+    "Content_Based": {
+        "Method": "Cosine Similarity (Sklearn)",
+        "Average_Overlap_Gensim_vs_Sklearn": "74.07%"
+    },
+    "Collaborative_Filtering": {
+        "Best_Model": "KNNWithMeans",
+        "RMSE": 0.7559649098099018,
+        "Scale": "0-10"
+    }
+}

@@ -1,0 +1,107 @@
+{
+  "location": {
+    "category_name": "Vị trí",
+    "icon": "📍",
+    "keywords": [
+      "gần biển",
+      "sát biển",
+      "gần trung tâm",
+      "trung tâm",
+      "gần chợ",
+      "gần chợ đêm",
+      "mặt tiền",
+      "vị trí thuận tiện",
+      "gần sân bay",
+      "gần bến xe",
+      "yên tĩnh",
+      "biệt lập"
+    ]
+  },
+  "view": {
+    "category_name": "Cảnh quan",
+    "icon": "🌊",
+    "keywords": [
+      "view biển",
+      "hướng biển",
+      "view thành phố",
+      "view city",
+      "view núi",
+      "view hồ bơi",
+      "view nội khu",
+      "view vườn",
+      "ban công",
+      "cửa sổ lớn",
+      "view đẹp",
+      "tầm nhìn rộng"
+    ]
+  },
+  "cleanliness": {
+    "category_name": "Vệ sinh & Không gian",
+    "icon": "✨",
+    "keywords": [
+      "sạch sẽ",
+      "sạch",
+      "thơm",
+      "thoáng",
+      "thoáng mát",
+      "rộng rãi",
+      "gọn gàng",
+      "sáng sủa",
+      "mới",
+      "mới xây",
+      "hiện đại",
+      "ấm cúng",
+      "sang trọng"
+    ]
+  },
+  "service": {
+    "category_name": "Dịch vụ",
+    "icon": "😊",
+    "keywords": [
+      "thân thiện",
+      "nhiệt tình",
+      "chu đáo",
+      "lịch sự",
+      "vui vẻ",
+      "hỗ trợ tốt",
+      "lễ tân dễ thương",
+      "chủ nhiệt tình",
+      "phục vụ nhanh",
+      "chuyên nghiệp"
+    ]
+  },
+  "amenities": {
+    "category_name": "Tiện ích & Cơ sở vật chất",
+    "icon": "🏊",
+    "keywords": [
+      "hồ bơi",
+      "bể bơi",
+      "bữa sáng",
+      "ăn sáng",
+      "buffet",
+      "thang máy",
+      "máy lạnh",
+      "điều hòa",
+      "wifi mạnh",
+      "bãi đỗ xe",
+      "chỗ đậu xe",
+      "spa",
+      "gym",
+      "sân vườn"
+    ]
+  },
+  "value": {
+    "category_name": "Giá cả & Độ hài lòng",
+    "icon": "🏷️",
+    "keywords": [
+      "giá tốt",
+      "giá rẻ",
+      "hợp túi tiền",
+      "đáng tiền",
+      "đáng giá",
+      "xứng đáng",
+      "tiết kiệm",
+      "ưu đãi"
+    ]
+  }
+}

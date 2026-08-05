@@ -13,8 +13,42 @@ import re
 from pyvi.ViTokenizer import tokenize
 from collections import Counter
 import streamlit as st
+import json
 
 # 1. LOAD DICTIONARIES (Sử dụng cache để không bị load lại file txt liên tục)
+@st.cache_data
+def load_keywords_config():
+    try:
+        with open("keywords.json", "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception as e:
+        st.error(f"⚠️ Không thể đọc file keywords.json: {e}")
+        return {}
+
+# 2. Hàm trích xuất các keyword xuất hiện trong mô tả khách sạn
+def extract_hotel_keywords(description_text):
+    if not description_text or pd.isna(description_text):
+        return []
+    
+    config = load_keywords_config()
+    desc_lower = str(description_text).lower()
+    found_tags = []
+
+    for cat_key, cat_data in config.items():
+        icon = cat_data.get("icon", "🏷️")
+        keywords = cat_data.get("keywords", [])
+        
+        # Kiểm tra xem từ khóa nào xuất hiện trong mô tả
+        for kw in keywords:
+            # Dùng regex hoặc 'in' để quét từ
+            if kw in desc_lower:
+                # Tạo tag định dạng dạng: 📍 Gần biển, ✨ Sạch sẽ...
+                tag_label = f"{icon} {kw.title()}"
+                if tag_label not in found_tags:
+                    found_tags.append(tag_label)
+                    
+    return found_tags
+
 @st.cache_data
 def load_dicts():
     # Stopwords
@@ -339,8 +373,30 @@ elif menu == "Khách du lịch":
         t1, t2 = st.tabs(["🛏️ Thông tin & Phòng", "📝 Điền Thông Tin Đặt Phòng"])
         
         with t1:
-            st.markdown("**Mô tả chi tiết:**")
-            st.write(hotel_data.get('Hotel_Description', 'Đang cập nhật mô tả...'))
+            # --- BỔ SUNG: TRÍCH XUẤT VÀ HIỂN THỊ CÁC KEYWORD DẠNG BADGE ---
+            raw_desc = hotel_data.get('Hotel_Description', '')
+            extracted_tags = extract_hotel_keywords(raw_desc)
+            
+            st.markdown("**Đặc điểm nổi bật:**")
+            if extracted_tags:
+                # Hiển thị danh sách tag dạng HTML badge màu xanh mượt mà
+                badge_html = " ".join([
+                    f'<span style="background-color: #1E3A8A; color: #FFFFFF; padding: 4px 10px; border-radius: 12px; font-size: 0.85rem; margin-right: 5px; display: inline-block; margin-bottom: 5px;">{tag}</span>'
+                    for tag in extracted_tags
+                ])
+                st.markdown(badge_html, unsafe_allow_html=True)
+            else:
+                st.info("Chưa trích xuất được từ khóa đặc trưng.")
+
+            st.divider()
+
+            # --- LÀM GỌN MÔ TẢ: Chỉ lấy tối đa 300 ký tự / câu đầu tiên ---
+            st.markdown("**Mô tả tóm tắt:**")
+            clean_desc = str(raw_desc).strip()
+            # Lấy tối đa 2 câu đầu hoặc 300 ký tự để không bị quá dài
+            short_desc = clean_desc.split('.')[0] + '.' if '.' in clean_desc else clean_desc[:300] + "..."
+            st.write(short_desc)
+            
             st.divider()
             
             st.markdown("**Danh Sách Các Loại Phòng Tham Khảo:**")
