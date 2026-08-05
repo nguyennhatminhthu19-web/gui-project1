@@ -450,7 +450,7 @@ elif menu == "Khách du lịch":
                 st.warning("Mô hình Cosine Similarity chưa sẵn sàng hoặc danh sách khách sạn rỗng.")
 
 # =========================================================
-    # TAB 2: GỢI Ý THEO TỪ KHÓA & MÔ TẢ (KNN - Chạy trên nội dung nhập)
+    # TAB 2: GỢI Ý THEO TỪ KHÓA & MÔ TẢ (Chỉ dùng Content Matching)
     # =========================================================
     with tab2:
         st.subheader("Gợi ý theo mong muốn & từ khóa tự do")
@@ -462,47 +462,40 @@ elif menu == "Khách du lịch":
 
         if st.button("🔍 Tìm kiếm theo mô tả", type="primary", key="btn_tab2"):
             if user_keywords.strip():
-                # Tận dụng thư viện tiền xử lý NLP pyvi mà hệ thống bạn đã tích hợp
                 try:
                     from pyvi import ViTokenizer
                     tokenized_input = ViTokenizer.tokenize(user_keywords.lower())
                     keywords = [kw for kw in tokenized_input.split() if len(kw) > 1]
                 except ImportError:
-                    # Fallback dự phòng nếu pyvi chưa load kịp
                     keywords = [kw.lower() for kw in user_keywords.split() if len(kw) > 1]
                 
-                def calculate_knn_content_score(row):
-                    # Tận dụng trường văn bản đã được bạn gộp/tiền xử lý
+                def calculate_keyword_score(row):
                     text_content = f"{row.get('Hotel_Name', '')} {row.get('Hotel_Address', '')} {row.get('Hotel_Description', '')}".lower()
                     
-                    # Tính điểm khớp từ khóa (hoạt động như một độ đo khoảng cách trong KNN)
-                    matches = sum(1 for kw in keywords if kw in text_content)
-                    kw_score = matches / len(keywords) if keywords else 0.0
+                    # KHẮC PHỤC 1: Xóa dấu gạch dưới của Pyvi để khớp với văn bản thường
+                    clean_keywords = [kw.replace("_", " ") for kw in keywords]
                     
-                    # Kết hợp thêm với trọng số từ ma trận cosine_sim bạn đã khai báo
-                    idx = row.name
-                    try:
-                        sim_val = cosine_sim[idx].mean() if cosine_sim is not None and idx < len(cosine_sim) else 0.5
-                    except:
-                        sim_val = 0.5
-                        
-                    # Trả về điểm tổng hợp để tìm ra các "hàng xóm gần nhất"
-                    return (kw_score * 0.7) + (sim_val * 0.3)
+                    # Tính điểm: Trùng bao nhiêu từ khóa trên tổng số từ khóa khách nhập
+                    matches = sum(1 for kw in clean_keywords if kw in text_content)
+                    kw_score = matches / len(clean_keywords) if clean_keywords else 0.0
+                    
+                    # KHẮC PHỤC 2: Chỉ trả về điểm từ khóa, không cộng thêm sim_val tĩnh nữa
+                    return kw_score
 
                 df_temp = df_info.copy()
-                df_temp['match_score'] = df_temp.apply(calculate_knn_content_score, axis=1)
+                df_temp['match_score'] = df_temp.apply(calculate_keyword_score, axis=1)
                 
-                # Sắp xếp để lấy ra đúng số lượng K khách sạn tương đồng gần nhất
+                # Lọc bỏ các khách sạn có điểm = 0 (không dính từ khóa nào) và sắp xếp
                 results = df_temp[df_temp['match_score'] > 0].sort_values(by='match_score', ascending=False).head(top_n_t2)
                 
                 if not results.empty:
-                    st.success("Kết quả các khách sạn phù hợp nhất với mô tả của bạn:")
+                    st.success(f"Kết quả các khách sạn phù hợp nhất với từ khóa của bạn:")
                     render_hotel_cards(results, key_prefix="t2")
                 else:
-                    st.warning("Chưa tìm thấy khách sạn nào khớp với từ khóa này. Hãy thử mô tả khác nhé!")
+                    st.warning("Chưa tìm thấy khách sạn nào khớp với từ khóa này. Hãy thử mô tả khác (ví dụ: hồ bơi, ăn sáng...) nhé!")
             else:
                 st.warning("Vui lòng nhập từ khóa hoặc mô tả để tìm kiếm.")
-
+                
     # =========================================================
     # TAB 3: GỢI Ý DỰA TRÊN HỒ SƠ & BỘ LỌC CHI TIẾT (KNN)
     # =========================================================
