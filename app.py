@@ -361,7 +361,7 @@ elif menu == "Khách du lịch":
             if st.button("✅ Xác nhận đặt phòng", type="primary", use_container_width=True):
                 st.success("Đã ghi nhận! Bộ phận chăm sóc khách hàng sẽ liên hệ với bạn sớm nhất.")
 
-    # 3. Hàm trợ giúp hiển thị danh sách khách sạn (Bấm vào Tên KS để đặt phòng)
+    # 3. Hàm trợ giúp hiển thị danh sách khách sạn
     def render_hotel_cards(results_df, key_prefix="card"):
         if results_df.empty:
             st.warning("⚠️ Không tìm thấy khách sạn phù hợp với tiêu chí của bạn.")
@@ -386,26 +386,22 @@ elif menu == "Khách du lịch":
             if match_pct > 98.5:
                 match_pct = 98.5
 
-            # Dùng khung viền bọc lại cho từng khách sạn
             with st.container(border=True):
                 c_info, c_score = st.columns([3.5, 1])
                 
                 with c_info:
-                    # --- NÚT BẤM CHÍNH LÀ TÊN KHÁCH SẠN ---
-                    # Khi bấm vào đây, Streamlit sẽ gọi hàm show_hotel_modal ngay lập tức
+                    # BẤM VÀO TÊN KHÁCH SẠN -> Gọi trực tiếp show_hotel_modal gốc của bạn
                     if st.button(f"🏨 {hotel_name}", key=f"{key_prefix}_name_btn_{idx}", use_container_width=True):
                         show_hotel_modal(row.to_dict())
                     
-                    # Các thông tin hiển thị bên dưới tên
                     st.write(f"📍 **Địa chỉ:** {address}")
                     st.write(f"⭐ **Hạng:** {star_display} | 🏆 **Đánh giá TB:** {total_score}/10")
                     
-                    # Dùng expander để xem mô tả chi tiết nếu muốn
                     with st.expander("📖 Xem mô tả tóm tắt"):
                         st.write(desc_snippet)
                     
                 with c_score:
-                    st.write("") # Căn lề
+                    st.write("") 
                     st.caption("Độ phù hợp")
                     st.markdown(f"<h2 style='color: #FF4B4B; margin:0;'>{match_pct}%</h2>", unsafe_allow_html=True)
 
@@ -458,8 +454,8 @@ elif menu == "Khách du lịch":
             else:
                 st.warning("Mô hình Cosine Similarity chưa sẵn sàng hoặc danh sách khách sạn rỗng.")
 
-# =========================================================
-    # TAB 2: GỢI Ý THEO TỪ KHÓA & MÔ TẢ (Chỉ dùng Content Matching)
+    # =========================================================
+    # TAB 2: GỢI Ý THEO TỪ KHÓA & MÔ TẢ
     # =========================================================
     with tab2:
         st.subheader("Gợi ý theo mong muốn & từ khóa tự do")
@@ -469,6 +465,7 @@ elif menu == "Khách du lịch":
                                      key="tab2_keywords")
         top_n_t2 = st.number_input("Số lượng gợi ý:", min_value=1, max_value=20, value=5, key="tab2_top_n")
 
+        # Nút bấm tìm kiếm
         if st.button("🔍 Tìm kiếm theo mô tả", type="primary", key="btn_tab2"):
             if user_keywords.strip():
                 try:
@@ -480,30 +477,28 @@ elif menu == "Khách du lịch":
                 
                 def calculate_keyword_score(row):
                     text_content = f"{row.get('Hotel_Name', '')} {row.get('Hotel_Address', '')} {row.get('Hotel_Description', '')}".lower()
-                    
-                    # KHẮC PHỤC 1: Xóa dấu gạch dưới của Pyvi để khớp với văn bản thường
                     clean_keywords = [kw.replace("_", " ") for kw in keywords]
-                    
-                    # Tính điểm: Trùng bao nhiêu từ khóa trên tổng số từ khóa khách nhập
                     matches = sum(1 for kw in clean_keywords if kw in text_content)
-                    kw_score = matches / len(clean_keywords) if clean_keywords else 0.0
-                    
-                    # KHẮC PHỤC 2: Chỉ trả về điểm từ khóa, không cộng thêm sim_val tĩnh nữa
-                    return kw_score
+                    return matches / len(clean_keywords) if clean_keywords else 0.0
 
                 df_temp = df_info.copy()
                 df_temp['match_score'] = df_temp.apply(calculate_keyword_score, axis=1)
                 
-                # Lọc bỏ các khách sạn có điểm = 0 (không dính từ khóa nào) và sắp xếp
-                results = df_temp[df_temp['match_score'] > 0].sort_values(by='match_score', ascending=False).head(top_n_t2)
-                
-                if not results.empty:
-                    st.success(f"Kết quả các khách sạn phù hợp nhất với từ khóa của bạn:")
-                    render_hotel_cards(results, key_prefix="t2")
-                else:
-                    st.warning("Chưa tìm thấy khách sạn nào khớp với từ khóa này. Hãy thử mô tả khác (ví dụ: hồ bơi, ăn sáng...) nhé!")
+                # Lưu kết quả tìm kiếm vào session_state để không bị mất khi bấm nút Tên KS
+                st.session_state['tab2_results'] = df_temp[df_temp['match_score'] > 0].sort_values(by='match_score', ascending=False).head(top_n_t2)
             else:
                 st.warning("Vui lòng nhập từ khóa hoặc mô tả để tìm kiếm.")
+                if 'tab2_results' in st.session_state:
+                    del st.session_state['tab2_results']
+
+        # Hiển thị danh sách khách sạn
+        if 'tab2_results' in st.session_state:
+            results = st.session_state['tab2_results']
+            if not results.empty:
+                st.success("Kết quả các khách sạn phù hợp nhất với từ khóa của bạn:")
+                render_hotel_cards(results, key_prefix="t2")
+            else:
+                st.warning("Chưa tìm thấy khách sạn nào khớp với từ khóa này. Hãy thử mô tả khác nhé!")
                 
     # =========================================================
     # TAB 3: GỢI Ý DỰA TRÊN HỒ SƠ & BỘ LỌC CHI TIẾT (KNN)
