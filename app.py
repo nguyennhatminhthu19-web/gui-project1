@@ -277,18 +277,13 @@ elif menu == "Phân công nhóm":
 # 6. Màn hình: KHÁCH DU LỊCH (Phân chia 3 Tabs)
 # ---------------------------------------------------------
 elif menu == "Khách du lịch":
-    # 1. Thêm CSS Custom cho hiệu ứng Hover hiện Popup Xem nhanh
+    # 1. Thêm CSS Custom cho hiệu ứng Hover toàn khung & Nút bấm Tên KS
     st.markdown("""
     <style>
-        .tooltip-container {
-            position: relative;
-            display: inline-block;
-            cursor: pointer;
-            margin-bottom: 10px;
-        }
-        .tooltip-container .tooltip-text {
+        /* A. Ẩn tooltip mặc định, định dạng khung popup */
+        .tooltip-text {
             visibility: hidden;
-            width: 350px;
+            width: 380px;
             background-color: #1e1e2f;
             color: #fff;
             text-align: left;
@@ -296,17 +291,41 @@ elif menu == "Khách du lịch":
             padding: 12px;
             position: absolute;
             z-index: 999;
-            bottom: 110%; 
+            bottom: 85%; /* Nổi lên phía trên */
             left: 0;
             opacity: 0;
             transition: opacity 0.3s;
-            box-shadow: 0px 8px 16px rgba(0,0,0,0.3);
+            box-shadow: 0px 8px 16px rgba(0,0,0,0.5);
             font-size: 0.85rem;
             line-height: 1.4;
+            pointer-events: none; /* Không cản trở click chuột vào nút bên dưới */
         }
-        .tooltip-container:hover .tooltip-text {
+        
+        /* B. Hiệu ứng: Khi rê chuột vào BẤT CỨ ĐÂU trong KHUNG GỢI Ý (có viền border), tooltip sẽ hiện */
+        div[data-testid="stVerticalBlockBorderWrapper"]:has(.tooltip-text):hover .tooltip-text {
             visibility: visible;
             opacity: 1;
+        }
+
+        /* C. Tùy chỉnh Nút bấm Streamlit (loại Tertiary) để nó trông y hệt tiêu đề h3 */
+        button[kind="tertiary"] {
+            padding: 0 !important;
+            background-color: transparent !important;
+            border: none !important;
+            justify-content: flex-start !important;
+            min-height: 0 !important;
+            margin-bottom: 5px !important;
+        }
+        button[kind="tertiary"] p {
+            font-size: 1.35rem !important;
+            font-weight: 700 !important;
+            color: #1E88E5 !important;
+            margin: 0 !important;
+            text-align: left !important;
+        }
+        /* Đổi màu tên khách sạn thành đỏ khi rê chuột vào để khách biết có thể click */
+        button[kind="tertiary"]:hover p {
+            color: #FF4B4B !important; 
         }
     </style>
     """, unsafe_allow_html=True)
@@ -367,38 +386,37 @@ elif menu == "Khách du lịch":
             if match_pct > 98.5:
                 match_pct = 98.5
 
-            hover_html = f"""
-            <div class="tooltip-container">
-                <h3 style="margin:0; color:#1E88E5;">🏨 {hotel_name}</h3>
-                <div class="tooltip-text">
-                    <b>📌 Trích lược nhanh:</b><br/>
-                    <b>Đánh giá:</b> {total_score}/10 ⭐<br/>
-                    <b>Mô tả:</b> {desc_snippet}<br/>
-                    <hr style="margin: 5px 0; border-color: #555;">
-                    <i style="color:#FFD700;">💡 Bấm "Xem & Đặt ngay" để xem các hạng phòng.</i>
-                </div>
-            </div>
-            """
-
-            with st.container():
-                c_info, c_score, c_btn = st.columns([2.5, 1, 1.2])
+            # Dùng st.container(border=True) để tạo KHUNG GỢI Ý. CSS sẽ bắt sự kiện hover trên cái khung này.
+            with st.container(border=True):
+                # Vì đã bỏ nút "Xem & Đặt ngay", giao diện giờ chỉ cần 2 cột cho thoáng
+                c_info, c_score = st.columns([3.5, 1])
                 
                 with c_info:
-                    st.markdown(hover_html, unsafe_allow_html=True)
-                    st.write(f"📍 **Địa chỉ:** {address}")
-                    st.write(f"⭐ **Hạng:** {star_display} | 🏆 **Đánh giá TB:** {total_score}/10")
+                    # --- NÂNG CẤP 1: Tên khách sạn giờ là nút bấm (Mở Modal ngay khi click) ---
+                    if st.button(f"🏨 {hotel_name}", key=f"{key_prefix}_title_btn_{idx}", type="tertiary"):
+                        show_hotel_modal(row.to_dict())
+                    
+                    # --- NÂNG CẤP 2: Cục Tooltip ẩn được chèn chung với thông tin địa chỉ ---
+                    info_html = f"""
+                    <div style="position: relative;">
+                        <p style="margin: 3px 0;">📍 <b>Địa chỉ:</b> {address}</p>
+                        <p style="margin: 3px 0;">⭐ <b>Hạng:</b> {star_display} | 🏆 <b>Đánh giá TB:</b> {total_score}/10</p>
+                        
+                        <div class="tooltip-text">
+                            <b>📌 Trích lược nhanh:</b><br/>
+                            <b>Đánh giá:</b> {total_score}/10 ⭐<br/>
+                            <b>Mô tả:</b> {desc_snippet}<br/>
+                            <hr style="margin: 5px 0; border-color: #555;">
+                            <i style="color:#FFD700;">💡 Bấm vào Tên khách sạn phía trên để xem phòng & đặt ngay!</i>
+                        </div>
+                    </div>
+                    """
+                    st.markdown(info_html, unsafe_allow_html=True)
                     
                 with c_score:
+                    st.write("") # Tạo khoảng trắng nhỏ đẩy điểm xuống giữa khung
                     st.caption("Độ phù hợp")
                     st.markdown(f"<h2 style='color: #FF4B4B; margin:0;'>{match_pct}%</h2>", unsafe_allow_html=True)
-                
-                with c_btn:
-                    st.write("")
-                    st.write("")
-                    if st.button("👉 Xem & Đặt ngay", key=f"{key_prefix}_btn_{idx}", type="secondary"):
-                        show_hotel_modal(row.to_dict())
-                
-                st.divider()
 
     # ---------------------------------------------------------
     # 4. Giao diện chính với 3 Tabs
