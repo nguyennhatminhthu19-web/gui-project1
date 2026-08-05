@@ -465,7 +465,9 @@ elif menu == "Khách du lịch":
                                      key="tab2_keywords")
         top_n_t2 = st.number_input("Số lượng gợi ý:", min_value=1, max_value=20, value=5, key="tab2_top_n")
 
-        # Nút bấm tìm kiếm
+        # =================================================
+        # PHẦN 1: NÚT TÌM KIẾM & XỬ LÝ (Lưu vào bộ nhớ)
+        # =================================================
         if st.button("🔍 Tìm kiếm theo mô tả", type="primary", key="btn_tab2"):
             if user_keywords.strip():
                 try:
@@ -484,14 +486,18 @@ elif menu == "Khách du lịch":
                 df_temp = df_info.copy()
                 df_temp['match_score'] = df_temp.apply(calculate_keyword_score, axis=1)
                 
-                # Lưu kết quả tìm kiếm vào session_state để không bị mất khi bấm nút Tên KS
+                # CẤT KẾT QUẢ VÀO BỘ NHỚ TẠM ĐỂ KHÔNG BAO GIỜ BỊ MẤT
                 st.session_state['tab2_results'] = df_temp[df_temp['match_score'] > 0].sort_values(by='match_score', ascending=False).head(top_n_t2)
             else:
                 st.warning("Vui lòng nhập từ khóa hoặc mô tả để tìm kiếm.")
                 if 'tab2_results' in st.session_state:
                     del st.session_state['tab2_results']
 
-        # Hiển thị danh sách khách sạn
+        # =================================================
+        # PHẦN 2: HIỂN THỊ KẾT QUẢ & NÚT BẤM
+        # ⚠️ LƯU Ý: Chữ 'if' dưới đây phải nằm ngang hàng với chữ 'if st.button' phía trên!
+        # Không được để thụt lề lọt vào trong.
+        # =================================================
         if 'tab2_results' in st.session_state:
             results = st.session_state['tab2_results']
             if not results.empty:
