@@ -14,6 +14,7 @@ from pyvi.ViTokenizer import tokenize
 from collections import Counter
 import streamlit as st
 import json
+import base64
 
 # 1. LOAD DICTIONARIES (Sử dụng cache để không bị load lại file txt liên tục)
 @st.cache_data
@@ -232,13 +233,74 @@ st.sidebar.caption("""
 # ---------------------------------------------------------
 # 3. Màn hình: TRANG CHỦ
 # ---------------------------------------------------------
+# Hàm phụ trợ để chuyển đổi ảnh local sang base64
+def get_base64_image(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
+
 if menu == "Trang chủ":
-    st.title("Agoda Hotel Recommender System")
-    col_left, col_mid, col_right = st.columns([2, 1, 2])
-    with col_mid:
-        st.image("Agoda_transparent_logo.png", use_container_width=True)
-    st.caption("Gợi ý khách sạn cá nhân hoá cho khách du lịch, phân tích kinh doanh cho chủ khách sạn")
+    # Đường dẫn tới file ảnh banner
+    banner_path = os.path.join("Hotel", "banner.jpg")
     
+    try:
+        # Chuyển ảnh sang chuỗi base64
+        base64_img = get_base64_image(banner_path)
+        
+        # Tạo mã HTML & CSS kết hợp ảnh nền và chữ
+        banner_html = f"""
+        <div style="
+            background-image: url('data:image/jpeg;base64,{base64_img}');
+            background-size: cover;
+            background-position: center;
+            border-radius: 15px;
+            padding: 100px 20px;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+            margin-bottom: 30px;
+        ">
+            <!-- Lớp phủ màu đen mờ giúp chữ trắng nổi bật hơn (Overlay) -->
+            <div style="
+                position: absolute; 
+                top: 0; left: 0; right: 0; bottom: 0; 
+                background-color: rgba(0, 0, 0, 0.4); 
+                border-radius: 15px;
+            "></div>
+            
+            <!-- Phần chữ hiển thị -->
+            <div style="position: relative; z-index: 1;">
+                <h1 style="
+                    color: white; 
+                    font-size: 3.5rem; 
+                    font-weight: 700; 
+                    margin-bottom: 10px; 
+                    text-shadow: 2px 2px 5px rgba(0,0,0,0.7);
+                ">
+                    Agoda Recommender System
+                </h1>
+                <p style="
+                    color: white; 
+                    font-size: 1.2rem; 
+                    font-weight: 500; 
+                    text-shadow: 1px 1px 4px rgba(0,0,0,0.7);
+                ">
+                    Gợi ý khách sạn cá nhân hoá cho khách du lịch, phân tích kinh doanh cho chủ khách sạn
+                </p>
+            </div>
+        </div>
+        """
+        # Hiển thị banner ra màn hình
+        st.markdown(banner_html, unsafe_allow_html=True)
+        
+    except FileNotFoundError:
+        # Dự phòng trường hợp bị sai đường dẫn hoặc không tìm thấy file ảnh
+        st.error(f"⚠️ Không tìm thấy file ảnh tại đường dẫn: {banner_path}")
+        st.title("Agoda Recommender System")
+        st.caption("Gợi ý khách sạn cá nhân hoá cho khách du lịch, phân tích kinh doanh cho chủ khách sạn")
+    
+    # ---------------------------------------------------------
+    # Giữ nguyên phần thống kê (Metrics) của bạn
+    # ---------------------------------------------------------
     col1, col2, col3 = st.columns(3)
     col1.metric(label="Khách sạn", value="740")
     col2.metric(label="Lượt đánh giá", value="80,314", delta="267 chưa có review")
