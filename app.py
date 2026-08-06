@@ -974,29 +974,58 @@ elif menu == "Chủ khách sạn":
                         st.error("⚠️ Không tìm thấy dữ liệu cho khách sạn này trong `df_info`!")
 
                 # =========================================================
-                # TAB 4: THỐNG KÊ KHÁCH HÀNG & MÙA VỤ (ĐÃ SỬA LỖI UI & DATA)
+                # TAB 4: THỐNG KÊ KHÁCH HÀNG & MÙA VỤ (ĐÃ SỬA LỖI TÌM & PARSE NGÀY)
                 # =========================================================
                 with tab4:
                     st.subheader("👥 Phân tích Tệp Khách Hàng & Tính Mùa Vụ")
                     
                     import plotly.express as px
                     import plotly.graph_objects as go
-                    
+                    import re
+
                     if not hotel_comments.empty:
-                        # --- BƯỚC XỬ LÝ CHUẨN HÓA CỘT NGÀY THÁNG ---
-                        date_col = "Review Date" if "Review Date" in hotel_comments.columns else None
+                        # 1. TỰ ĐỘNG TÌM CỘT NGÀY THÁNG (Không phụ thuộc tên chính xác)
+                        possible_date_cols = [c for c in hotel_comments.columns if any(k in c.lower() for k in ['date', 'ngày', 'ngay', 'time', 'created'])]
+                        date_col = possible_date_cols[0] if possible_date_cols else None
+                        
+                        has_date_data = False
+                        
                         if date_col:
-                            # Thêm dayfirst=True để đọc đúng định dạng ngày Việt Nam / Châu Âu
-                            hotel_comments['parsed_date'] = pd.to_datetime(hotel_comments[date_col], dayfirst=True, errors='coerce')
+                            # Cách 1: Parse tiêu chuẩn bằng pandas (format mixed)
+                            hotel_comments['parsed_date'] = pd.to_datetime(hotel_comments[date_col], errors='coerce', format='mixed')
+                            
+                            # Cách 2: Nếu chưa parse được, làm sạch chuỗi tiếng Việt (xóa chữ tháng/năm/đánh giá)
+                            if not hotel_comments['parsed_date'].notna().any():
+                                cleaned_date = hotel_comments[date_col].astype(str)\
+                                    .str.lower()\
+                                    .str.replace(r'tháng|thg|month', '/', regex=True)\
+                                    .str.replace(r'năm|year', '/', regex=True)\
+                                    .str.replace(r'đã đánh giá vào|ngày|reviewed', '', regex=True)
+                                hotel_comments['parsed_date'] = pd.to_datetime(cleaned_date, errors='coerce', dayfirst=True)
+                            
+                            # Trích xuất Year và Month
+                            hotel_comments['Year'] = hotel_comments['parsed_date'].dt.year
+                            hotel_comments['Month'] = hotel_comments['parsed_date'].dt.month
+                            
+                            # Cách 3 (Dự phòng Regex): Bóc trực tiếp con số Năm 20xx và Tháng từ văn bản
+                            if not hotel_comments['Year'].notna().any():
+                                extracted_years = hotel_comments[date_col].astype(str).str.extract(r'(\b20\d{2}\b)')[0]
+                                hotel_comments['Year'] = pd.to_numeric(extracted_years, errors='coerce')
+                            
+                            if not hotel_comments['Month'].notna().any():
+                                extracted_months = hotel_comments[date_col].astype(str).str.extract(r'(?:tháng|month|\b)\s*([1-9]|1[0-2])\b', flags=re.IGNORECASE)[0]
+                                hotel_comments['Month'] = pd.to_numeric(extracted_months, errors='coerce')
+
+                            if hotel_comments['Year'].notna().any():
+                                has_date_data = True
                         
                         # --- HÀNG 1: 3 BIỂU ĐỒ TỔNG QUAN KHÁCH HÀNG ---
                         c1, c2, c3 = st.columns(3)
                         
-                        # 1. Biểu đồ Reviews per Year (Line chart)
+                        # 1. Biểu đồ Reviews per Year
                         with c1:
                             st.markdown("<p style='text-align: center; font-weight: bold;'>Reviews per Year</p>", unsafe_allow_html=True)
-                            if date_col and hotel_comments['parsed_date'].notna().any():
-                                hotel_comments['Year'] = hotel_comments['parsed_date'].dt.year
+                            if has_date_data:
                                 yearly_counts = hotel_comments['Year'].dropna().astype(int).value_counts().sort_index().reset_index()
                                 yearly_counts.columns = ['Year', 'Count']
                                 
@@ -1012,12 +1041,14 @@ elif menu == "Chủ khách sạn":
                                 )
                                 st.plotly_chart(fig_year, use_container_width=True)
                             else:
-                                st.info("Không nhận diện được định dạng ngày đánh giá.")
+                                st.info(f"Không tìm thấy cột ngày. Các cột hiện có: {list(hotel_comments.columns)}")
 
-                        # 2. Biểu đồ Top Nationalities (Horizontal Bar)
+                        # 2. Biểu đồ Top Nationalities (Tự động quét cột Quốc tịch)
                         with c2:
                             st.markdown("<p style='text-align: center; font-weight: bold;'>Top Nationalities</p>", unsafe_allow_html=True)
-                            nat_col = "Reviewer Nationality" if "Reviewer Nationality" in hotel_comments.columns else ("Nationality" if "Nationality" in hotel_comments.columns else None)
+                            nat_cols = [c for c in hotel_comments.columns if any(k in c.lower() for k in ['national', 'quốc tịch', 'country', 'quoc_tich'])]
+                            nat_col = nat_cols[0] if nat_cols else None
+                            
                             if nat_col:
                                 nat_counts = hotel_comments[nat_col].value_counts().head(5).reset_index()
                                 nat_counts.columns = ['Nationality', 'Count']
@@ -1037,10 +1068,12 @@ elif menu == "Chủ khách sạn":
                             else:
                                 st.info("Không có dữ liệu quốc tịch.")
 
-                        # 3. Biểu đồ Group Type (Vertical Bar)
+                        # 3. Biểu đồ Group Type (Tự động quét cột Loại nhóm)
                         with c3:
                             st.markdown("<p style='text-align: center; font-weight: bold;'>Group Type</p>", unsafe_allow_html=True)
-                            group_col = "Group Name" if "Group Name" in hotel_comments.columns else None
+                            group_cols = [c for c in hotel_comments.columns if any(k in c.lower() for k in ['group', 'nhóm', 'type', 'traveler'])]
+                            group_col = group_cols[0] if group_cols else None
+                            
                             if group_col:
                                 group_counts = hotel_comments[group_col].value_counts().head(5).reset_index()
                                 group_counts.columns = ['Group', 'Count']
@@ -1063,38 +1096,51 @@ elif menu == "Chủ khách sạn":
                         st.divider()
                         st.markdown("### Ví dụ minh họa — Mùa cao/thấp điểm (Bonus)")
                         
-                        score_col_season = "Score" if "Score" in hotel_comments.columns else None
+                        # Tự động tìm cột Score
+                        score_cols = [c for c in hotel_comments.columns if any(k in c.lower() for k in ['score', 'điểm', 'rating', 'mark'])]
+                        score_col_season = score_cols[0] if score_cols else None
                         
-                        if date_col and score_col_season and hotel_comments['parsed_date'].notna().any():
-                            # Ép kiểu Score sang số
+                        if has_date_data and score_col_season:
                             hotel_comments[score_col_season] = pd.to_numeric(hotel_comments[score_col_season], errors='coerce')
                             
-                            # Phân loại mùa cho KS NÀY
-                            hotel_comments['Month'] = hotel_comments['parsed_date'].dt.month
-                            hotel_comments['Season'] = hotel_comments['Month'].apply(
-                                lambda x: 'Peak' if x in [5, 6, 7] else ('Off-Peak' if x in [10, 11, 12] else 'Other')
-                            )
+                            # Phân loại mùa
+                            if 'Month' not in hotel_comments.columns or hotel_comments['Month'].isna().all():
+                                hotel_comments['Season'] = 'Other'
+                            else:
+                                hotel_comments['Season'] = hotel_comments['Month'].apply(
+                                    lambda x: 'Peak' if x in [5, 6, 7] else ('Off-Peak' if x in [10, 11, 12] else 'Other')
+                                )
                             
                             ks_season_scores = hotel_comments.groupby('Season')[score_col_season].mean().to_dict()
-                            ks_peak = round(ks_season_scores.get('Peak', 0), 2)
-                            ks_off_peak = round(ks_season_scores.get('Off-Peak', 0), 2)
+                            mean_fallback = hotel_comments[score_col_season].mean() or 0
+                            ks_peak = round(ks_season_scores.get('Peak', mean_fallback), 2)
+                            ks_off_peak = round(ks_season_scores.get('Off-Peak', mean_fallback), 2)
                             
                             # Tính cho ĐỐI THỦ TRUNG BÌNH
                             comp_peak, comp_off_peak = 0.0, 0.0
                             if 'df_comments' in locals() and 'top_competitors' in locals():
                                 comp_ids = top_competitors[col_hotel_id_info].tolist()
-                                comp_id_col = "Hotel ID" if "Hotel ID" in df_comments.columns else "Hotel_ID"
+                                comp_id_col = [c for c in df_comments.columns if 'id' in c.lower()][0] if any('id' in c.lower() for c in df_comments.columns) else df_comments.columns[0]
                                 
                                 comp_comments = df_comments[df_comments[comp_id_col].isin(comp_ids)].copy()
-                                comp_comments['parsed_date'] = pd.to_datetime(comp_comments[date_col], dayfirst=True, errors='coerce')
-                                comp_comments['Score'] = pd.to_numeric(comp_comments[score_col_season], errors='coerce')
-                                comp_comments['Month'] = comp_comments['parsed_date'].dt.month
-                                comp_comments['Season'] = comp_comments['Month'].apply(
-                                    lambda x: 'Peak' if x in [5, 6, 7] else ('Off-Peak' if x in [10, 11, 12] else 'Other')
-                                )
-                                comp_season_scores = comp_comments.groupby('Season')['Score'].mean().to_dict()
-                                comp_peak = round(comp_season_scores.get('Peak', 0), 2)
-                                comp_off_peak = round(comp_season_scores.get('Off-Peak', 0), 2)
+                                comp_date_cols = [c for c in comp_comments.columns if any(k in c.lower() for k in ['date', 'ngày', 'time', 'created'])]
+                                comp_date_col = comp_date_cols[0] if comp_date_cols else date_col
+                                
+                                if comp_date_col and comp_date_col in comp_comments.columns:
+                                    comp_parsed = pd.to_datetime(comp_comments[comp_date_col], errors='coerce', format='mixed')
+                                    comp_comments['Month'] = comp_parsed.dt.month
+                                    if comp_comments['Month'].isna().all():
+                                        months_ext = comp_comments[comp_date_col].astype(str).str.extract(r'(?:tháng|month|\b)\s*([1-9]|1[0-2])\b', flags=re.IGNORECASE)[0]
+                                        comp_comments['Month'] = pd.to_numeric(months_ext, errors='coerce')
+                                        
+                                    comp_comments['Score'] = pd.to_numeric(comp_comments[score_col_season], errors='coerce')
+                                    comp_comments['Season'] = comp_comments['Month'].apply(
+                                        lambda x: 'Peak' if x in [5, 6, 7] else ('Off-Peak' if x in [10, 11, 12] else 'Other')
+                                    )
+                                    comp_season_scores = comp_comments.groupby('Season')['Score'].mean().to_dict()
+                                    comp_mean_fb = comp_comments['Score'].mean() or 0
+                                    comp_peak = round(comp_season_scores.get('Peak', comp_mean_fb), 2)
+                                    comp_off_peak = round(comp_season_scores.get('Off-Peak', comp_mean_fb), 2)
                             
                             c_chart, c_table = st.columns([3, 2])
                             
@@ -1113,8 +1159,8 @@ elif menu == "Chủ khách sạn":
                                                         'Competitor Average': '#eb8a1f'
                                                     })
                                 
-                                # Tự động tính giới hạn trục Y theo dữ liệu thật thay vì set cứng
-                                min_score = min([s for s in [ks_peak, ks_off_peak, comp_peak, comp_off_peak] if s > 0] or [8.0]) - 0.5
+                                valid_scores = [s for s in [ks_peak, ks_off_peak, comp_peak, comp_off_peak] if s > 0]
+                                min_score = min(valid_scores) - 0.5 if valid_scores else 7.0
                                 fig_season.update_layout(
                                     yaxis=dict(range=[max(0, min_score), 10.0], gridcolor='#333333'),
                                     paper_bgcolor='rgba(0,0,0,0)',
@@ -1149,6 +1195,6 @@ elif menu == "Chủ khách sạn":
                                 st.caption("*ngưỡng độ lớn ±0.15 áp dụng — chênh lệch nhỏ không đủ để coi là điểm yếu thật.*")
                                 st.success("💡 **Nếu phát hiện mùa yếu thật:** hệ thống tự động trích top-5 từ khóa tích cực/tiêu cực RIÊNG của mùa đó để chỉ rõ nguyên nhân cụ thể.")
                         else:
-                            st.warning("⚠️ Cột ngày tháng hoặc điểm số không có dữ liệu hợp lệ để phân tích mùa vụ.")
+                            st.warning(f"⚠️ Cần có cột Ngày & Điểm đánh giá để hiển thị mùa vụ. Tên cột nhận diện được: Ngày=`{date_col}`, Điểm=`{score_col_season}`")
                     else:
                         st.info("Chưa có dữ liệu bình luận để thống kê khách hàng.")
