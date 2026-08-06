@@ -990,26 +990,58 @@ elif menu == "Chủ khách sạn":
                             col_nlp1, col_nlp2 = st.columns(2)
                             
                             with col_nlp1:
-                                st.markdown("##### ☁️ Những từ khóa nổi bật trong review")
-                                try:
-                                    from wordcloud import WordCloud
-                                    import matplotlib.pyplot as plt
-                                    
-                                    wordcloud = WordCloud(
-                                        width=800, height=500, 
-                                        background_color='white', 
-                                        colormap='viridis',
-                                        max_words=100
-                                    ).generate(all_reviews_text)
-                                    
-                                    fig, ax = plt.subplots(figsize=(8, 5))
-                                    ax.imshow(wordcloud, interpolation='bilinear')
-                                    ax.axis("off")
-                                    st.pyplot(fig)
-                                except ImportError:
-                                    st.warning("⚠️ Chưa cài đặt thư viện `wordcloud`. Mở terminal chạy lệnh: `pip install wordcloud`")
-                                except Exception as e:
-                                    st.error(f"⚠️ Lỗi khi vẽ WordCloud: {e}")
+                                st.markdown("##### ☁️ Từ khóa Tích cực & Tiêu cực")
+                                
+                                if not hotel_comments.empty and 'Score' in hotel_comments.columns:
+                                    try:
+                                        from wordcloud import WordCloud
+                                        import matplotlib.pyplot as plt
+                                        
+                                        df_temp = hotel_comments.copy()
+                                        
+                                        # Kiểm tra nếu chưa có cột 'Review_Content_Clean', tự động chạy hàm clean của bạn
+                                        if 'Review_Content_Clean' not in df_temp.columns:
+                                            raw_col = "Review_Content" if "Review_Content" in df_temp.columns else ("Body" if "Body" in df_temp.columns else None)
+                                            if raw_col:
+                                                df_temp['Review_Content_Clean'] = df_temp[raw_col].fillna('').astype(str).apply(clean_review_text)
+                                            else:
+                                                df_temp['Review_Content_Clean'] = ""
+
+                                        # TẬN DỤNG HÀM get_keyword_analysis CỦA BẠN
+                                        pos_dict, neg_dict = get_keyword_analysis(df_temp, top_n=50)
+
+                                        # Hàm hỗ trợ vẽ WordCloud từ Dictionary
+                                        def draw_freq_wordcloud(freq_dict, colormap, title):
+                                            if freq_dict:
+                                                st.markdown(f"**{title}**")
+                                                # Thay dấu '_' thành khoảng trắng để từ ghép hiển thị đẹp hơn
+                                                display_dict = {k.replace('_', ' '): v for k, v in freq_dict.items()}
+                                                
+                                                wordcloud = WordCloud(
+                                                    width=600, height=300, 
+                                                    background_color='white', 
+                                                    colormap=colormap,
+                                                    max_words=50
+                                                ).generate_from_frequencies(display_dict)
+                                                
+                                                fig, ax = plt.subplots(figsize=(6, 3))
+                                                ax.imshow(wordcloud, interpolation='bilinear')
+                                                ax.axis("off")
+                                                st.pyplot(fig)
+                                            else:
+                                                st.info(f"Chưa đủ dữ liệu cho {title}.")
+
+                                        # Hiển thị 2 đám mây từ
+                                        draw_freq_wordcloud(pos_dict, 'Greens', '🟢 Điểm khen ngợi (Điểm 8-10)')
+                                        st.write("") 
+                                        draw_freq_wordcloud(neg_dict, 'Reds', '🔴 Điểm cần cải thiện (Điểm <= 5)')
+                                            
+                                    except ImportError:
+                                        st.warning("⚠️ Chưa cài đặt thư viện `wordcloud`.")
+                                    except Exception as e:
+                                        st.error(f"⚠️ Lỗi khi vẽ WordCloud: {e}")
+                                else:
+                                    st.info("Chưa có đủ dữ liệu bình luận hoặc cột 'Score' để phân tích.")
                                     
                             with col_nlp2:
                                 st.markdown("##### 📊 Phân bổ đánh giá của Khách hàng")
