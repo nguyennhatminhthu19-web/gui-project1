@@ -767,11 +767,12 @@ elif menu == "Chủ khách sạn":
 
                 st.markdown("---")
 
-                # BỘ 3 TAB PHÂN TÍCH
-                tab1, tab2, tab3 = st.tabs([
+                # BỘ 4 TAB PHÂN TÍCH 
+                tab1, tab2, tab3, tab4 = st.tabs([
                     "📌 Overview", 
                     "💬 Review", 
-                    "📊 Benchmark đối thủ"
+                    "📊 Benchmark đối thủ",
+                    "👥 Thống kê khách hàng" 
                 ])
 
                 # =========================================================
@@ -971,7 +972,164 @@ elif menu == "Chủ khách sạn":
                             st.warning("⚠️ Không tìm thấy biến `cosine_sim`. Hãy đảm bảo đã load/tính ma trận `cosine_sim`!")
                     else:
                         st.error("⚠️ Không tìm thấy dữ liệu cho khách sạn này trong `df_info`!")
-                
+
+                # =========================================================
+                # TAB 4: THỐNG KÊ KHÁCH HÀNG (CODE MỚI)
+                # =========================================================
+                with tab4:
+                    st.subheader("👥 Phân tích Tệp Khách Hàng & Tính Mùa Vụ")
+                    
+                    import plotly.express as px
+                    import plotly.graph_objects as go
+                    
+                    if not hotel_comments.empty:
+                        # --- HÀNG 1: 3 BIỂU ĐỒ TỔNG QUAN KHÁCH HÀNG ---
+                        c1, c2, c3 = st.columns(3)
+                        
+                        # 1. Biểu đồ Reviews per Year (Line chart)
+                        with c1:
+                            st.markdown("<p style='text-align: center; font-weight: bold;'>Reviews per Year</p>", unsafe_allow_html=True)
+                            date_col = "Review Date" if "Review Date" in hotel_comments.columns else None
+                            if date_col:
+                                # Chuyển đổi ngày tháng và lấy năm
+                                hotel_comments['Year'] = pd.to_datetime(hotel_comments[date_col], errors='coerce').dt.year
+                                yearly_counts = hotel_comments['Year'].dropna().astype(int).value_counts().sort_index().reset_index()
+                                yearly_counts.columns = ['Year', 'Count']
+                                
+                                fig_year = px.line(yearly_counts, x='Year', y='Count', markers=True)
+                                fig_year.update_traces(line_color='#26545b', marker=dict(color='#26545b', size=8)) # Màu xanh cổ vịt
+                                fig_year.update_layout(xaxis_title=None, yaxis_title=None, margin=dict(l=0, r=0, t=10, b=0), plot_bgcolor='white')
+                                fig_year.update_xaxes(dtick=1, showgrid=False)
+                                fig_year.update_yaxes(showgrid=False)
+                                st.plotly_chart(fig_year, use_container_width=True)
+                            else:
+                                st.info("Không có dữ liệu ngày đánh giá.")
+
+                        # 2. Biểu đồ Top Nationalities (Horizontal Bar)
+                        with c2:
+                            st.markdown("<p style='text-align: center; font-weight: bold;'>Top Nationalities</p>", unsafe_allow_html=True)
+                            nat_col = "Reviewer Nationality" if "Reviewer Nationality" in hotel_comments.columns else ("Nationality" if "Nationality" in hotel_comments.columns else None)
+                            if nat_col:
+                                nat_counts = hotel_comments[nat_col].value_counts().head(5).reset_index()
+                                nat_counts.columns = ['Nationality', 'Count']
+                                nat_counts = nat_counts.sort_values('Count', ascending=True) # Sort để đưa giá trị to nhất lên trên trong Plotly
+                                
+                                fig_nat = px.bar(nat_counts, x='Count', y='Nationality', orientation='h')
+                                fig_nat.update_traces(marker_color='#eb891a') # Màu cam
+                                fig_nat.update_layout(xaxis_title=None, yaxis_title=None, margin=dict(l=0, r=0, t=10, b=0), plot_bgcolor='white')
+                                fig_nat.update_xaxes(showgrid=False)
+                                fig_nat.update_yaxes(showgrid=False)
+                                st.plotly_chart(fig_nat, use_container_width=True)
+                            else:
+                                st.info("Không có dữ liệu quốc tịch.")
+
+                        # 3. Biểu đồ Group Type (Vertical Bar)
+                        with c3:
+                            st.markdown("<p style='text-align: center; font-weight: bold;'>Group Type</p>", unsafe_allow_html=True)
+                            group_col = "Group Name" if "Group Name" in hotel_comments.columns else None
+                            if group_col:
+                                group_counts = hotel_comments[group_col].value_counts().head(5).reset_index()
+                                group_counts.columns = ['Group', 'Count']
+                                
+                                fig_group = px.bar(group_counts, x='Group', y='Count')
+                                fig_group.update_traces(marker_color='#508b6f') # Màu xanh lục/rêu
+                                fig_group.update_layout(xaxis_title=None, yaxis_title=None, margin=dict(l=0, r=0, t=10, b=0), plot_bgcolor='white')
+                                fig_group.update_xaxes(tickangle=45, showgrid=False)
+                                fig_group.update_yaxes(showgrid=False)
+                                st.plotly_chart(fig_group, use_container_width=True)
+                            else:
+                                st.info("Không có dữ liệu loại nhóm.")
+                        
+                        # --- HÀNG 2: PHÂN TÍCH MÙA CAO/THẤP ĐIỂM ---
+                        st.divider()
+                        st.markdown(f"### Ví dụ minh họa — Mùa cao/thấp điểm (Bonus)")
+                        
+                        score_col_season = "Score" if "Score" in hotel_comments.columns else None
+                        if date_col and score_col_season and 'df_comments' in locals() and 'top_competitors' in locals():
+                            # 1. Trích xuất tháng và phân loại mùa cho KS NÀY
+                            hotel_comments['Month'] = pd.to_datetime(hotel_comments[date_col], errors='coerce').dt.month
+                            hotel_comments['Season'] = hotel_comments['Month'].apply(
+                                lambda x: 'Peak' if x in [5, 6, 7] else ('Off-Peak' if x in [10, 11, 12] else 'Other')
+                            )
+                            # Tính trung bình điểm theo mùa
+                            ks_season_scores = hotel_comments.groupby('Season')[score_col_season].mean().to_dict()
+                            ks_peak = round(ks_season_scores.get('Peak', 0), 2)
+                            ks_off_peak = round(ks_season_scores.get('Off-Peak', 0), 2)
+                            
+                            # 2. Tính toán tương tự cho ĐỐI THỦ TRUNG BÌNH
+                            # Lấy ID của top 5 đối thủ từ Tab 3
+                            comp_ids = top_competitors[col_hotel_id_info].tolist()
+                            comp_id_col = "Hotel ID" if "Hotel ID" in df_comments.columns else "Hotel_ID"
+                            
+                            # Lọc comment của đối thủ
+                            comp_comments = df_comments[df_comments[comp_id_col].isin(comp_ids)].copy()
+                            comp_comments['Score'] = pd.to_numeric(comp_comments[score_col_season], errors='coerce')
+                            comp_comments['Month'] = pd.to_datetime(comp_comments[date_col], errors='coerce').dt.month
+                            comp_comments['Season'] = comp_comments['Month'].apply(
+                                lambda x: 'Peak' if x in [5, 6, 7] else ('Off-Peak' if x in [10, 11, 12] else 'Other')
+                            )
+                            # Tính trung bình điểm đối thủ theo mùa
+                            comp_season_scores = comp_comments.groupby('Season')['Score'].mean().to_dict()
+                            comp_peak = round(comp_season_scores.get('Peak', 0), 2)
+                            comp_off_peak = round(comp_season_scores.get('Off-Peak', 0), 2)
+                            
+                            # 3. Tạo DataFrame cho Biểu đồ & Bảng
+                            season_data = pd.DataFrame({
+                                'Season': ['Peak', 'Off-Peak'],
+                                selected_hotel_name: [ks_peak, ks_off_peak],
+                                'Competitor Average': [comp_peak, comp_off_peak]
+                            })
+                            
+                            c_chart, c_table = st.columns([3, 2])
+                            
+                            # Cột Trái: Biểu đồ Grouped Bar
+                            with c_chart:
+                                # Melt dataframe để vẽ plotly
+                                df_melted = season_data.melt(id_vars='Season', var_name='Type', value_name='Average Score')
+                                fig_season = px.bar(df_melted, x='Season', y='Average Score', color='Type', barmode='group',
+                                                    color_discrete_map={
+                                                        selected_hotel_name: '#1e4c59', # Xanh đen
+                                                        'Competitor Average': '#eb8a1f' # Cam
+                                                    })
+                                fig_season.update_layout(
+                                    yaxis=dict(range=[8.5, 10.0]), # Đặt range y giống ảnh mẫu
+                                    legend_title_text=None,
+                                    legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99),
+                                    plot_bgcolor='white', margin=dict(t=20)
+                                )
+                                fig_season.update_yaxes(showgrid=True, gridwidth=1, gridcolor='LightGray')
+                                st.plotly_chart(fig_season, use_container_width=True)
+                                st.caption("Peak: Tháng 5, 6, 7  |  Off-Peak: Tháng 10, 11, 12")
+                            
+                            # Cột Phải: Bảng Thống kê & Insight
+                            with c_table:
+                                # Tính toán trạng thái
+                                diff_peak = round(ks_peak - comp_peak, 2)
+                                diff_off = round(ks_off_peak - comp_off_peak, 2)
+                                
+                                def get_status(diff):
+                                    if diff >= 0.15: return "Ahead"
+                                    elif diff <= -0.15: return "Behind"
+                                    else: return "Comparable*"
+                                
+                                table_season = pd.DataFrame({
+                                    "Mùa": ["Peak", "Off-Peak"],
+                                    "KS này": [ks_peak, ks_off_peak],
+                                    "Đối thủ TB": [comp_peak, comp_off_peak],
+                                    "Chênh lệch": [f"{diff_peak:+.2f}", f"{diff_off:+.2f}"],
+                                    "Trạng thái": [get_status(diff_peak), get_status(diff_off)]
+                                })
+                                
+                                st.dataframe(table_season, hide_index=True, use_container_width=True)
+                                st.caption("*ngưỡng độ lớn ±0.15 áp dụng — chênh lệch nhỏ không đủ để coi là điểm yếu thật (tránh cảnh báo sai).*")
+                                
+                                # Insight logic
+                                st.success("💡 **Nếu phát hiện mùa yếu thật:** hệ thống tự động trích top-5 từ khóa tích cực/tiêu cực RIÊNG của mùa đó để chỉ rõ nguyên nhân cụ thể.")
+                        else:
+                            st.warning("⚠️ Không đủ dữ liệu ngày tháng hoặc điểm số để phân tích mùa vụ. (Cần phải chạy load top_competitors ở Tab 3 trước)")
+                    else:
+                        st.info("Chưa có dữ liệu bình luận để thống kê khách hàng.")
+
                 # =========================================================
                 # 4. PHÂN TÍCH TỪ KHÓA & ĐÁNH GIÁ TỪ REVIEW (ĐOẠN CODE MỚI THÊM VÀO)
                 # =========================================================
