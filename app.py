@@ -226,8 +226,8 @@ st.sidebar.caption("""
 \nNhóm thực hiện:
 \nNguyễn Thị Thúy Hằng  thuyhang0911@gmail.com
 \nNguyễn Nhật Minh Thư  nguyen.nhatminhthu19@gmail.com
-\nLê Ngọc Tuấn          lengoctuan04lkk@gmail.com
-\nGiảng viên hướng dẫn: Cô. Khuất Thùy Phương
+\nLê Ngọc Tuấn          \nlengoctuan04lkk@gmail.com
+\nGiảng viên hướng dẫn: \nCô. Khuất Thùy Phương
 """)
 
 # ---------------------------------------------------------
@@ -240,7 +240,7 @@ def get_base64_image(image_path):
 
 if menu == "Trang chủ":
     # Đường dẫn tới file ảnh banner
-    banner_path = os.path.join("Hotel", "banner.jpg")
+    banner_path = os.path.join("Hotel", "Banner.jpg")
     
     try:
         # Chuyển ảnh sang chuỗi base64
