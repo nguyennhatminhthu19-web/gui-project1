@@ -523,7 +523,7 @@ elif menu == "Khách du lịch":
                     st.write("") 
                     st.caption("Độ phù hợp")
                     st.markdown(f"<h2 style='color: #FF4B4B; margin:0;'>{match_pct}%</h2>", unsafe_allow_html=True)
-                    
+
     # ---------------------------------------------------------
     # 4. Giao diện chính với 3 Tabs
     # ---------------------------------------------------------
@@ -683,8 +683,8 @@ elif menu == "Khách du lịch":
             filtered_df['match_score'] = filtered_df.apply(calculate_knn_score, axis=1)
             results = filtered_df.sort_values(by='match_score', ascending=False).head(top_n_t3)
 
-            greeting = f" chào **{user_name_input}**" if user_name_input.strip() else ""
-            st.success(f"Xin{greeting}! Dưới đây là các khách sạn phù hợp nhất với nhóm khách **{nationality_option}** - **{trip_option}**:")
+            greeting = f"**{user_name_input}**" if user_name_input.strip() else ""
+            st.success(f"Xin chào {greeting}! Dưới đây là các khách sạn phù hợp nhất với nhóm khách **{nationality_option}** - **{trip_option}**:")
             render_hotel_cards(results, key_prefix="t3")
 
 # ---------------------------------------------------------
@@ -799,6 +799,7 @@ elif menu == "Chủ khách sạn":
                         sys_scores.append(round(float(val_sys), 2))
                         competitor_scores.append(round(float(val_comp), 2))
 
+                    # 1. Chuẩn bị dữ liệu cho Biểu đồ
                     chart_df = pd.DataFrame({
                         'Tiêu chí': criteria,
                         current_hotel_name: ks_scores,
@@ -806,8 +807,7 @@ elif menu == "Chủ khách sạn":
                         'Đối thủ': competitor_scores
                     }).set_index('Tiêu chí')
                     
-                    st.bar_chart(chart_df, stack=False)
-
+                    # 2. Chuẩn bị dữ liệu cho Bảng
                     win_counts = ["5/5" if ks >= comp else "4/5" for ks, comp in zip(ks_scores, competitor_scores)]
                     table_df = pd.DataFrame({
                         "Tiêu chí": criteria,
@@ -816,16 +816,28 @@ elif menu == "Chủ khách sạn":
                         "Đối thủ": [f"{v:.2f}" for v in competitor_scores],
                         "Thắng": win_counts
                     })
-                    st.dataframe(table_df, use_container_width=True, hide_index=True)
 
-                    wins_total = sum(1 for ks, comp in zip(ks_scores, competitor_scores) if ks >= comp)
-                    st.success(f"💡 **Thắng cả 5 đối thủ ở {wins_total}/5 tiêu chí**")
+                    # --- CHIA 2 CỘT GIAO DIỆN Ở ĐÂY ---
+                    col_chart, col_table = st.columns(2)
                     
-                    st.info("""
-                    **Insight cho chủ khách sạn:**
-                    * 🚀 Marketing các điểm mạnh & lợi thế hàng đầu (đặc biệt là Vị trí & Vệ sinh).
-                    * 💰 Mở rộng tầm giá hoặc gói ưu đãi đi kèm để nâng cao thêm độ "đáng tiền" (Value for money).
-                    """)
+                    # Nửa bên trái: Biểu đồ
+                    with col_chart:
+                        st.markdown("**Biểu đồ so sánh các tiêu chí**")
+                        st.bar_chart(chart_df, stack=False)
+
+                    # Nửa bên phải: Bảng số liệu & Insight
+                    with col_table:
+                        st.markdown("**Bảng điểm chi tiết**")
+                        st.dataframe(table_df, use_container_width=True, hide_index=True)
+
+                        wins_total = sum(1 for ks, comp in zip(ks_scores, competitor_scores) if ks >= comp)
+                        st.success(f"💡 **Thắng cả 5 đối thủ ở {wins_total}/5 tiêu chí**")
+                        
+                        st.info("""
+                        **Insight cho chủ khách sạn:**
+                        * 🚀 Marketing các điểm mạnh & lợi thế hàng đầu (đặc biệt là Vị trí & Vệ sinh).
+                        * 💰 Mở rộng tầm giá hoặc gói ưu đãi đi kèm để nâng cao thêm độ "đáng tiền" (Value for money).
+                        """)
 
                 # =========================================================
                 # TAB 2: REVIEW 
