@@ -15,6 +15,7 @@ from collections import Counter
 import streamlit as st
 import json
 import base64
+import random
 
 # 1. LOAD DICTIONARIES (Sử dụng cache để không bị load lại file txt liên tục)
 @st.cache_data
@@ -482,9 +483,23 @@ elif menu == "Khách du lịch":
             match_pct = round(60.0 + (raw_score * 38.0), 1) if raw_score <= 1.0 else round(raw_score, 1)
             if match_pct > 98.5: match_pct = 98.5
 
+            # --- BƯỚC MỚI: TẠO ĐƯỜNG DẪN ẢNH RANDOM TỪ H1.jpg -> H20.jpg ---
+            random_img_id = random.randint(1, 20)
+            img_path = os.path.join("Hotel", f"H{random_img_id}.jpg")
+
             with st.container(border=True):
-                c_info, c_score = st.columns([3.5, 1])
+                # Thay đổi tỷ lệ cột: Thêm 1 cột bên trái để chứa ảnh
+                c_img, c_info, c_score = st.columns([1.2, 3, 1])
                 
+                # Cột 1: Hiển thị ảnh
+                with c_img:
+                    try:
+                        st.image(img_path, use_container_width=True)
+                    except FileNotFoundError:
+                        # Báo lỗi nhẹ nhàng nếu lỡ thiếu file ảnh trong thư mục
+                        st.caption(f"⚠️ Thiếu file {img_path}")
+                
+                # Cột 2: Thông tin khách sạn
                 with c_info:
                     # ==========================================
                     # BÍ QUYẾT Ở ĐÂY: Dùng on_click và args
@@ -503,11 +518,12 @@ elif menu == "Khách du lịch":
                     with st.expander("📖 Xem mô tả tóm tắt"):
                         st.write(desc_snippet)
                     
+                # Cột 3: Điểm phù hợp
                 with c_score:
                     st.write("") 
                     st.caption("Độ phù hợp")
                     st.markdown(f"<h2 style='color: #FF4B4B; margin:0;'>{match_pct}%</h2>", unsafe_allow_html=True)
-
+                    
     # ---------------------------------------------------------
     # 4. Giao diện chính với 3 Tabs
     # ---------------------------------------------------------
