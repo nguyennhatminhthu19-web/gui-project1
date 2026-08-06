@@ -246,49 +246,30 @@ if menu == "Trang chủ":
         # Chuyển ảnh sang chuỗi base64
         base64_img = get_base64_image(banner_path)
         
-        # Tạo mã HTML & CSS kết hợp ảnh nền và chữ
+        # LƯU Ý QUAN TRỌNG: Viết sát lề trái từ thẻ <div> đầu tiên, không thụt đầu dòng các thẻ HTML
         banner_html = f"""
-        <div style="
-            background-image: url('data:image/jpeg;base64,{base64_img}');
-            background-size: cover;
-            background-position: center;
-            border-radius: 15px;
-            padding: 100px 20px;
-            text-align: center;
-            position: relative;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-            margin-bottom: 30px;
-        ">
-            <!-- Lớp phủ màu đen mờ giúp chữ trắng nổi bật hơn (Overlay) -->
-            <div style="
-                position: absolute; 
-                top: 0; left: 0; right: 0; bottom: 0; 
-                background-color: rgba(0, 0, 0, 0.4); 
-                border-radius: 15px;
-            "></div>
-            
-            <!-- Phần chữ hiển thị -->
-            <div style="position: relative; z-index: 1;">
-                <h1 style="
-                    color: white; 
-                    font-size: 3.5rem; 
-                    font-weight: 700; 
-                    margin-bottom: 10px; 
-                    text-shadow: 2px 2px 5px rgba(0,0,0,0.7);
-                ">
-                    Agoda Recommender System
-                </h1>
-                <p style="
-                    color: white; 
-                    font-size: 1.2rem; 
-                    font-weight: 500; 
-                    text-shadow: 1px 1px 4px rgba(0,0,0,0.7);
-                ">
-                    Gợi ý khách sạn cá nhân hoá cho khách du lịch, phân tích kinh doanh cho chủ khách sạn
-                </p>
-            </div>
-        </div>
-        """
+<div style="
+    background-image: url('data:image/jpeg;base64,{base64_img}');
+    background-size: cover;
+    background-position: center;
+    border-radius: 15px;
+    padding: 60px 20px; 
+    text-align: center;
+    position: relative;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    margin-bottom: 30px;
+">
+<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.4); border-radius: 15px;"></div>
+<div style="position: relative; z-index: 1;">
+<h1 style="color: white; font-size: 2.5rem; font-weight: 700; margin-bottom: 10px; text-shadow: 2px 2px 5px rgba(0,0,0,0.7);">
+Agoda Recommender System
+</h1>
+<p style="color: white; font-size: 1.1rem; font-weight: 500; text-shadow: 1px 1px 4px rgba(0,0,0,0.7); margin: 0;">
+Gợi ý khách sạn cá nhân hoá cho khách du lịch, phân tích kinh doanh cho chủ khách sạn
+</p>
+</div>
+</div>
+"""
         # Hiển thị banner ra màn hình
         st.markdown(banner_html, unsafe_allow_html=True)
         
