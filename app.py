@@ -1016,22 +1016,23 @@ elif menu == "Chủ khách sạn":
                                 score_col_nlp = "Score" if "Score" in hotel_comments.columns else None
                                 
                                 if score_col_nlp:
+                                    # Lấy cột điểm, ép kiểu số và loại bỏ các giá trị rỗng
                                     scores = pd.to_numeric(hotel_comments[score_col_nlp], errors='coerce').dropna()
+                                    
                                     if not scores.empty:
-                                        # Nhóm điểm lại để đếm: Tiêu cực (<5), Trung bình (5-7.9), Tích cực (8-10)
+                                        # Khai báo các mốc phân loại
                                         sentiment_bins = [0, 4.9, 7.9, 10]
                                         sentiment_labels = ['Tiêu cực (<5)', 'Trung bình (5-7.9)', 'Tích cực (8-10)']
-                                        hotel_comments['Sentiment_Group'] = pd.cut(scores, bins=sentiment_bins, labels=sentiment_labels, include_lowest=True)
                                         
-                                        sentiment_counts = hotel_comments['Sentiment_Group'].value_counts().sort_index()
+                                        # SỬA LỖI: Cắt (cut) trực tiếp trên Series 'scores' (Không gán ngược lại vào df gốc)
+                                        sentiment_series = pd.cut(scores, bins=sentiment_bins, labels=sentiment_labels, include_lowest=True)
+                                        
+                                        # Đếm số lượng và dùng reindex để luôn giữ đủ 3 nhãn (cột nào không có sẽ = 0)
+                                        sentiment_counts = sentiment_series.value_counts().reindex(sentiment_labels, fill_value=0)
+                                        
+                                        # Vẽ biểu đồ
                                         st.bar_chart(sentiment_counts)
                                     else:
                                         st.info("Không đủ dữ liệu điểm số hợp lệ.")
                                 else:
                                     st.info("Không có cột 'Score' để phân tích cảm xúc.")
-                        else:
-                            st.info("Dữ liệu bình luận trống sau khi làm sạch.")
-                    else:
-                        st.warning("Không tìm thấy cột chứa nội dung bình luận để phân tích (Review_Content / Body).")
-                else:
-                    st.info("Chưa có bình luận nào để phân tích từ khóa.")
