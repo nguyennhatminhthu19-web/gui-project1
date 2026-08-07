@@ -873,15 +873,65 @@ elif menu == "Chủ khách sạn":
                         sys_scores.append(round(float(val_sys), 2))
                         competitor_scores.append(round(float(val_comp), 2))
 
-                    # 1. Chuẩn bị dữ liệu cho Biểu đồ
-                    chart_df = pd.DataFrame({
-                        'Tiêu chí': criteria,
-                        current_hotel_name: ks_scores,
-                        'Hệ thống': sys_scores,
-                        'Đối thủ': competitor_scores
-                    }).set_index('Tiêu chí')
+                    # 1. Chuẩn bị dữ liệu & Vẽ Radar Chart bằng Plotly
+                    import plotly.graph_objects as go
                     
-                    # 2. Chuẩn bị dữ liệu cho Bảng
+                    # Để Radar Chart khép kín vòng, ta cần nối điểm cuối về lại điểm đầu (thêm phần tử số 0 vào cuối mảng)
+                    categories = criteria + [criteria[0]]
+                    r_ks = ks_scores + [ks_scores[0]]
+                    r_sys = sys_scores + [sys_scores[0]]
+                    r_comp = competitor_scores + [competitor_scores[0]]
+                    
+                    fig_radar = go.Figure()
+                    
+                    # Vẽ đường cho Khách sạn hiện tại (Màu nổi bật, tô nền)
+                    fig_radar.add_trace(go.Scatterpolar(
+                        r=r_ks,
+                        theta=categories,
+                        fill='toself',
+                        name=current_hotel_name,
+                        line_color='#eb891a' # Màu cam nổi bật
+                    ))
+                    
+                    # Vẽ đường cho Đối thủ (Chỉ vẽ viền, không tô nền để tránh đè khuất khách sạn)
+                    fig_radar.add_trace(go.Scatterpolar(
+                        r=r_comp,
+                        theta=categories,
+                        fill=None, 
+                        name='Đối thủ TB',
+                        line_color='#508b6f' # Màu xanh lá
+                    ))
+
+                    # Vẽ đường cho Trung bình hệ thống (Chỉ vẽ viền)
+                    fig_radar.add_trace(go.Scatterpolar(
+                        r=r_sys,
+                        theta=categories,
+                        fill=None,
+                        name='Hệ thống TB',
+                        line_color='#4da9ff', # Màu xanh dương
+                        line_dash='dot' # Dùng nét đứt cho hệ thống để dễ phân biệt
+                    ))
+                    
+                    # Căn chỉnh giao diện biểu đồ (Tương thích giao diện Darkmode)
+                    fig_radar.update_layout(
+                        polar=dict(
+                            radialaxis=dict(
+                                visible=True,
+                                range=[0, 10], # Khoảng điểm từ 0 đến 10
+                                gridcolor='#333333',
+                                linecolor='#333333'
+                            ),
+                            angularaxis=dict(gridcolor='#333333', linecolor='#333333')
+                        ),
+                        showlegend=True,
+                        legend=dict(orientation="h", yanchor="top", y=-0.1, xanchor="center", x=0.5),
+                        margin=dict(l=30, r=30, t=30, b=30),
+                        paper_bgcolor='rgba(0,0,0,0)',
+                        plot_bgcolor='rgba(0,0,0,0)',
+                        font=dict(color="white") 
+                    )
+                    
+                    # 2. Chuẩn bị dữ liệu cho Bảng (Giữ nguyên của bạn)
                     win_counts = ["5/5" if ks >= comp else "4/5" for ks, comp in zip(ks_scores, competitor_scores)]
                     table_df = pd.DataFrame({
                         "Tiêu chí": criteria,
@@ -890,14 +940,14 @@ elif menu == "Chủ khách sạn":
                         "Đối thủ": [f"{v:.2f}" for v in competitor_scores],
                         "Thắng": win_counts
                     })
-
+                    
                     # --- CHIA 2 CỘT GIAO DIỆN Ở ĐÂY ---
                     col_chart, col_table = st.columns(2)
-                    
-                    # Nửa bên trái: Biểu đồ
+                   
+                    # Nửa bên trái: Biểu đồ Radar
                     with col_chart:
-                        st.markdown("**Biểu đồ so sánh các tiêu chí**")
-                        st.bar_chart(chart_df, stack=False)
+                        st.markdown("**Biểu đồ Radar so sánh các tiêu chí**")
+                        st.plotly_chart(fig_radar, use_container_width=True)
 
                     # Nửa bên phải: Bảng số liệu & Insight
                     with col_table:
@@ -906,12 +956,6 @@ elif menu == "Chủ khách sạn":
 
                         wins_total = sum(1 for ks, comp in zip(ks_scores, competitor_scores) if ks >= comp)
                         st.success(f"💡 **Thắng cả 5 đối thủ ở {wins_total}/5 tiêu chí**")
-                        
-                        st.info("""
-                        **Insight cho chủ khách sạn:**
-                        * 🚀 Marketing các điểm mạnh & lợi thế hàng đầu (đặc biệt là Vị trí & Vệ sinh).
-                        * 💰 Mở rộng tầm giá hoặc gói ưu đãi đi kèm để nâng cao thêm độ "đáng tiền" (Value for money).
-                        """)
                         
                     # PHÂN TÍCH TỪ KHÓA & ĐÁNH GIÁ TỪ REVIEW (ĐÃ SỬA LỖI WORDCLOUD & BÁO RÕ KHI THIẾU DATA)
                     st.divider()
