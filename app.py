@@ -793,8 +793,18 @@ elif menu == "Chủ khách sạn":
             # Tự động nhận diện tên cột
             col_hotel_id_info = "Hotel_ID" if "Hotel_ID" in df_info.columns else df_info.columns[0]
             col_hotel_name = "Hotel_Name" if "Hotel_Name" in df_info.columns else "Tên khách sạn"
-            col_hotel_id_comments = "Hotel_ID" if (df_comments is not None and "Hotel_ID" in df_comments.columns) else (df_comments.columns[0] if df_comments is not None else None)
-
+            
+            # SỬA Ở ĐÂY: Dò tìm cả "Hotel ID" và "Hotel_ID" ngay từ đầu
+            if df_comments is not None:
+                if "Hotel ID" in df_comments.columns:
+                    col_hotel_id_comments = "Hotel ID"
+                elif "Hotel_ID" in df_comments.columns:
+                    col_hotel_id_comments = "Hotel_ID"
+                else:
+                    col_hotel_id_comments = df_comments.columns[0]
+            else:
+                col_hotel_id_comments = None
+                
             # Selectbox chọn khách sạn
             hotel_list = sorted(df_info[col_hotel_name].dropna().unique())
             selected_hotel_name = st.selectbox("🏨 Chọn khách sạn của bạn:", hotel_list)
