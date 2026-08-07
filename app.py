@@ -264,6 +264,7 @@ st.markdown("""
 st.sidebar.title("🏨 Hotel Recommender")
 
 menu = st.sidebar.radio(
+    "Menu điều hướng",
     ["Trang chủ", "Business problem", "Phân công nhóm", "Khách du lịch", "Chủ khách sạn"]
 )
 
