@@ -804,9 +804,12 @@ elif menu == "Chủ khách sạn":
                 hotel_row = df_info[df_info[col_hotel_name] == selected_hotel_name].iloc[0]
                 selected_hotel_id = hotel_row[col_hotel_id_info]
 
-                # Lọc danh sách bình luận
+                # Lọc danh sách bình luận (Đã chuẩn hóa để chống lỗi lệch kiểu dữ liệu str/float/int)
                 if df_comments is not None and col_hotel_id_comments in df_comments.columns:
-                    hotel_comments = df_comments[df_comments[col_hotel_id_comments] == selected_hotel_id]
+                    str_target_id = str(selected_hotel_id).split('.')[0].strip()
+                    hotel_comments = df_comments[
+                        df_comments[col_hotel_id_comments].astype(str).str.split('.').str[0].str.strip() == str_target_id
+                    ].copy()
                 else:
                     hotel_comments = pd.DataFrame()
 
@@ -899,6 +902,102 @@ elif menu == "Chủ khách sạn":
                         * 🚀 Marketing các điểm mạnh & lợi thế hàng đầu (đặc biệt là Vị trí & Vệ sinh).
                         * 💰 Mở rộng tầm giá hoặc gói ưu đãi đi kèm để nâng cao thêm độ "đáng tiền" (Value for money).
                         """)
+                        
+                    # PHÂN TÍCH TỪ KHÓA & ĐÁNH GIÁ TỪ REVIEW (ĐOẠN CODE MỚI THÊM VÀO)
+                    st.divider()
+                    st.subheader("📝 Phân tích Nội dung Đánh giá (Từ khóa & Cảm xúc)")
+                    
+                    if not hotel_comments.empty:
+                        # Lấy cột nội dung ưu tiên (tùy thuộc file csv của bạn có cột nào)
+                        text_col = "Review_Content_Clean" if "Review_Content_Clean" in hotel_comments.columns else ("Review_Content" if "Review_Content" in hotel_comments.columns else "Body")
+                        
+                        if text_col in hotel_comments.columns:
+                            # Gộp tất cả các text review lại thành 1 chuỗi để vẽ WordCloud
+                            all_reviews_text = " ".join(hotel_comments[text_col].dropna().astype(str).tolist())
+                            
+                            if all_reviews_text.strip():
+                                col_nlp1, col_nlp2 = st.columns(2)
+                                
+                                with col_nlp1:
+                                    st.markdown("##### ☁️ Từ khóa Tích cực & Tiêu cực")
+                                    
+                                    if not hotel_comments.empty and 'Score' in hotel_comments.columns:
+                                        try:
+                                            from wordcloud import WordCloud
+                                            import matplotlib.pyplot as plt
+                                            
+                                            df_temp = hotel_comments.copy()
+                                            
+                                            # Kiểm tra nếu chưa có cột 'Review_Content_Clean', tự động chạy hàm clean của bạn
+                                            if 'Review_Content_Clean' not in df_temp.columns:
+                                                raw_col = "Review_Content" if "Review_Content" in df_temp.columns else ("Body" if "Body" in df_temp.columns else None)
+                                                if raw_col:
+                                                    df_temp['Review_Content_Clean'] = df_temp[raw_col].fillna('').astype(str).apply(clean_review_text)
+                                                else:
+                                                    df_temp['Review_Content_Clean'] = ""
+
+                                            # TẬN DỤNG HÀM get_keyword_analysis CỦA BẠN
+                                            pos_dict, neg_dict = get_keyword_analysis(df_temp, top_n=50)
+
+                                            # Hàm hỗ trợ vẽ WordCloud từ Dictionary
+                                            def draw_freq_wordcloud(freq_dict, colormap, title):
+                                                if freq_dict:
+                                                    st.markdown(f"**{title}**")
+                                                    # Thay dấu '_' thành khoảng trắng để từ ghép hiển thị đẹp hơn
+                                                    display_dict = {k.replace('_', ' '): v for k, v in freq_dict.items()}
+                                                    
+                                                    wordcloud = WordCloud(
+                                                        width=600, height=300, 
+                                                        background_color='white', 
+                                                        colormap=colormap,
+                                                        max_words=50
+                                                    ).generate_from_frequencies(display_dict)
+                                                    
+                                                    fig, ax = plt.subplots(figsize=(6, 3))
+                                                    ax.imshow(wordcloud, interpolation='bilinear')
+                                                    ax.axis("off")
+                                                    st.pyplot(fig)
+                                                else:
+                                                    st.info(f"Chưa đủ dữ liệu cho {title}.")
+
+                                            # Hiển thị 2 đám mây từ
+                                            draw_freq_wordcloud(pos_dict, 'Greens', '🟢 Điểm khen ngợi (Điểm 8-10)')
+                                            st.write("") 
+                                            draw_freq_wordcloud(neg_dict, 'Reds', '🔴 Điểm cần cải thiện (Điểm <= 5)')
+                                                
+                                        except ImportError:
+                                            st.warning("⚠️ Chưa cài đặt thư viện `wordcloud`.")
+                                        except Exception as e:
+                                            st.error(f"⚠️ Lỗi khi vẽ WordCloud: {e}")
+                                    else:
+                                        st.info("Chưa có đủ dữ liệu bình luận hoặc cột 'Score' để phân tích.")
+                                        
+                                with col_nlp2:
+                                    st.markdown("##### 📊 Phân bổ đánh giá của Khách hàng")
+                                    score_col_nlp = "Score" if "Score" in hotel_comments.columns else None
+                                    
+                                    if score_col_nlp:
+                                        # Lấy cột điểm, ép kiểu số và loại bỏ các giá trị rỗng
+                                        scores = pd.to_numeric(hotel_comments[score_col_nlp], errors='coerce').dropna()
+                                        
+                                        if not scores.empty:
+                                            # Khai báo các mốc phân loại
+                                            sentiment_bins = [0, 4.9, 7.9, 10]
+                                            sentiment_labels = ['Tiêu cực (<5)', 'Trung bình (5-7.9)', 'Tích cực (8-10)']
+                                            
+                                            # SỬA LỖI: Cắt (cut) trực tiếp trên Series 'scores' (Không gán ngược lại vào df gốc)
+                                            sentiment_series = pd.cut(scores, bins=sentiment_bins, labels=sentiment_labels, include_lowest=True)
+                                            
+                                            # Đếm số lượng và dùng reindex để luôn giữ đủ 3 nhãn (cột nào không có sẽ = 0)
+                                            sentiment_counts = sentiment_series.value_counts().reindex(sentiment_labels, fill_value=0)
+                                            
+                                            # Vẽ biểu đồ
+                                            st.bar_chart(sentiment_counts)
+                                        else:
+                                            st.info("Không đủ dữ liệu điểm số hợp lệ.")
+                                    else:
+                                        st.info("Không có cột 'Score' để phân tích cảm xúc.")
+                    
                 # =========================================================
                 # TAB 4: REVIEW & PHÂN TÍCH KHÁCH HÀNG
                 # =========================================================
@@ -1257,100 +1356,3 @@ elif menu == "Chủ khách sạn":
                             st.warning(f"⚠️ Cần có cột Ngày & Điểm đánh giá để hiển thị mùa vụ. Tên cột nhận diện được: Ngày=`{date_col}`, Điểm=`{score_col_season}`")
                     else:
                         st.info("Chưa có dữ liệu bình luận để thống kê khách hàng.")
-
-                # =========================================================
-                # 4. PHÂN TÍCH TỪ KHÓA & ĐÁNH GIÁ TỪ REVIEW (ĐOẠN CODE MỚI THÊM VÀO)
-                # =========================================================
-                st.divider()
-                st.subheader("📝 Phân tích Nội dung Đánh giá (Từ khóa & Cảm xúc)")
-                
-                if not hotel_comments.empty:
-                    # Lấy cột nội dung ưu tiên (tùy thuộc file csv của bạn có cột nào)
-                    text_col = "Review_Content_Clean" if "Review_Content_Clean" in hotel_comments.columns else ("Review_Content" if "Review_Content" in hotel_comments.columns else "Body")
-                    
-                    if text_col in hotel_comments.columns:
-                        # Gộp tất cả các text review lại thành 1 chuỗi để vẽ WordCloud
-                        all_reviews_text = " ".join(hotel_comments[text_col].dropna().astype(str).tolist())
-                        
-                        if all_reviews_text.strip():
-                            col_nlp1, col_nlp2 = st.columns(2)
-                            
-                            with col_nlp1:
-                                st.markdown("##### ☁️ Từ khóa Tích cực & Tiêu cực")
-                                
-                                if not hotel_comments.empty and 'Score' in hotel_comments.columns:
-                                    try:
-                                        from wordcloud import WordCloud
-                                        import matplotlib.pyplot as plt
-                                        
-                                        df_temp = hotel_comments.copy()
-                                        
-                                        # Kiểm tra nếu chưa có cột 'Review_Content_Clean', tự động chạy hàm clean của bạn
-                                        if 'Review_Content_Clean' not in df_temp.columns:
-                                            raw_col = "Review_Content" if "Review_Content" in df_temp.columns else ("Body" if "Body" in df_temp.columns else None)
-                                            if raw_col:
-                                                df_temp['Review_Content_Clean'] = df_temp[raw_col].fillna('').astype(str).apply(clean_review_text)
-                                            else:
-                                                df_temp['Review_Content_Clean'] = ""
-
-                                        # TẬN DỤNG HÀM get_keyword_analysis CỦA BẠN
-                                        pos_dict, neg_dict = get_keyword_analysis(df_temp, top_n=50)
-
-                                        # Hàm hỗ trợ vẽ WordCloud từ Dictionary
-                                        def draw_freq_wordcloud(freq_dict, colormap, title):
-                                            if freq_dict:
-                                                st.markdown(f"**{title}**")
-                                                # Thay dấu '_' thành khoảng trắng để từ ghép hiển thị đẹp hơn
-                                                display_dict = {k.replace('_', ' '): v for k, v in freq_dict.items()}
-                                                
-                                                wordcloud = WordCloud(
-                                                    width=600, height=300, 
-                                                    background_color='white', 
-                                                    colormap=colormap,
-                                                    max_words=50
-                                                ).generate_from_frequencies(display_dict)
-                                                
-                                                fig, ax = plt.subplots(figsize=(6, 3))
-                                                ax.imshow(wordcloud, interpolation='bilinear')
-                                                ax.axis("off")
-                                                st.pyplot(fig)
-                                            else:
-                                                st.info(f"Chưa đủ dữ liệu cho {title}.")
-
-                                        # Hiển thị 2 đám mây từ
-                                        draw_freq_wordcloud(pos_dict, 'Greens', '🟢 Điểm khen ngợi (Điểm 8-10)')
-                                        st.write("") 
-                                        draw_freq_wordcloud(neg_dict, 'Reds', '🔴 Điểm cần cải thiện (Điểm <= 5)')
-                                            
-                                    except ImportError:
-                                        st.warning("⚠️ Chưa cài đặt thư viện `wordcloud`.")
-                                    except Exception as e:
-                                        st.error(f"⚠️ Lỗi khi vẽ WordCloud: {e}")
-                                else:
-                                    st.info("Chưa có đủ dữ liệu bình luận hoặc cột 'Score' để phân tích.")
-                                    
-                            with col_nlp2:
-                                st.markdown("##### 📊 Phân bổ đánh giá của Khách hàng")
-                                score_col_nlp = "Score" if "Score" in hotel_comments.columns else None
-                                
-                                if score_col_nlp:
-                                    # Lấy cột điểm, ép kiểu số và loại bỏ các giá trị rỗng
-                                    scores = pd.to_numeric(hotel_comments[score_col_nlp], errors='coerce').dropna()
-                                    
-                                    if not scores.empty:
-                                        # Khai báo các mốc phân loại
-                                        sentiment_bins = [0, 4.9, 7.9, 10]
-                                        sentiment_labels = ['Tiêu cực (<5)', 'Trung bình (5-7.9)', 'Tích cực (8-10)']
-                                        
-                                        # SỬA LỖI: Cắt (cut) trực tiếp trên Series 'scores' (Không gán ngược lại vào df gốc)
-                                        sentiment_series = pd.cut(scores, bins=sentiment_bins, labels=sentiment_labels, include_lowest=True)
-                                        
-                                        # Đếm số lượng và dùng reindex để luôn giữ đủ 3 nhãn (cột nào không có sẽ = 0)
-                                        sentiment_counts = sentiment_series.value_counts().reindex(sentiment_labels, fill_value=0)
-                                        
-                                        # Vẽ biểu đồ
-                                        st.bar_chart(sentiment_counts)
-                                    else:
-                                        st.info("Không đủ dữ liệu điểm số hợp lệ.")
-                                else:
-                                    st.info("Không có cột 'Score' để phân tích cảm xúc.")
