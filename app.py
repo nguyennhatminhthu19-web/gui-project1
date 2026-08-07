@@ -1001,6 +1001,7 @@ elif menu == "Chủ khách sạn":
                                                         display_dict = {str(k).replace('_', ' '): v for k, v in freq_dict.items() if pd.notna(k)}
                                                         
                                                         wordcloud = WordCloud(
+                                                            font_path='arial.ttf',
                                                             width=600, height=300,
                                                             background_color='white',
                                                             colormap=colormap,
