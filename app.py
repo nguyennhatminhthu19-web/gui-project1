@@ -804,7 +804,7 @@ elif menu == "Chủ khách sạn":
                     col_hotel_id_comments = df_comments.columns[0]
             else:
                 col_hotel_id_comments = None
-                
+
             # Selectbox chọn khách sạn
             hotel_list = sorted(df_info[col_hotel_name].dropna().unique())
             selected_hotel_name = st.selectbox("🏨 Chọn khách sạn của bạn:", hotel_list)
@@ -834,7 +834,7 @@ elif menu == "Chủ khách sạn":
                 total_reviews = len(hotel_comments) if not hotel_comments.empty else int(hotel_row.get("Review_Count", 312))
 
                 m1, m2, m3 = st.columns(3)
-                m1.metric(label="Điểm tổng", value=f"{score_val}")
+                m1.metric(label="Điểm tổng", value=f"{score_val}/10")
                 m2.metric(label="Lượt đánh giá", value=f"{total_reviews:,}")
                 m3.metric(label="So với TB hệ thống", value=f"{diff_sys:+0.1f}", delta="▲ cao hơn trung bình" if diff_sys >= 0 else "▼ thấp hơn trung bình")
 
@@ -1082,25 +1082,22 @@ elif menu == "Chủ khách sạn":
                         st.info(f"Chưa có bài đánh giá chi tiết nào cho **{current_h_name}** trong dữ liệu.")
 
                 # =========================================================
-                # TAB 2: BENCHMARK ĐỐI THỦ 
+                # TAB 2: BENCHMARK ĐỐI THỦ
                 # =========================================================
                 with tab2:
                     st.subheader("🎯 Top 5 Khách sạn đối thủ tương tự nhất")
-                    
+                   
                     hotel_idx_list = df_info[df_info[col_hotel_id_info] == selected_hotel_id].index
-
                     if not hotel_idx_list.empty:
                         hotel_idx = hotel_idx_list[0]
-
                         sim_scores = []
                         if 'cosine_sim' in globals() and cosine_sim is not None:
                             sim_scores = list(enumerate(cosine_sim[hotel_idx]))
                         elif 'cosine_sim' in st.session_state and st.session_state['cosine_sim'] is not None:
                             sim_scores = list(enumerate(st.session_state['cosine_sim'][hotel_idx]))
-
                         if sim_scores:
                             sim_scores = sorted(sim_scores, key=lambda x: x[1], reverse=True)
-                            
+                           
                             top_sim_indices = []
                             top_sim_values = []
                             for idx_sim, score in sim_scores:
@@ -1109,22 +1106,17 @@ elif menu == "Chủ khách sạn":
                                     top_sim_values.append(round(float(score), 3))
                                 if len(top_sim_indices) == 5:
                                     break
-
                             top_competitors = df_info.iloc[top_sim_indices].copy()
                             top_competitors['Cosine_Similarity'] = top_sim_values
-
                             comp_avg_score = round(float(top_competitors[score_col].mean()), 2) if (score_col and score_col in top_competitors.columns) else 0.0
                             comp_avg_sim = round(float(sum(top_sim_values) / len(top_sim_values)), 3)
                             diff_score = round(score_val - comp_avg_score, 2)
-
                             b1, b2, b3 = st.columns(3)
                             b1.metric("Điểm khách sạn của bạn", f"{score_val}/10")
                             b2.metric("Điểm TB Top 5 đối thủ", f"{comp_avg_score}/10", delta=f"{diff_score:+0.2f} điểm")
                             b3.metric("Độ tương đồng trung bình", f"{comp_avg_sim}")
-
                             st.markdown("---")
                             st.markdown("#### 🏆 Danh sách 5 đối thủ cạnh tranh trực tiếp")
-
                             cols_to_show = [col_hotel_name]
                             if 'Star_Rating' in top_competitors.columns:
                                 cols_to_show.append('Star_Rating')
@@ -1133,8 +1125,130 @@ elif menu == "Chủ khách sạn":
                             cols_to_show.append('Cosine_Similarity')
                             if 'Hotel_Address' in top_competitors.columns:
                                 cols_to_show.append('Hotel_Address')
-
                             st.dataframe(top_competitors[cols_to_show], use_container_width=True, hide_index=True)
+
+                            # =========================================================
+                            # PHẦN MỚI CHUYỂN SANG: PHÂN TÍCH MÙA CAO/THẤP ĐIỂM
+                            # =========================================================
+                            st.divider()
+                            st.markdown("### 🗓️ Phân tích Mùa cao/thấp điểm (So với Top 5 Đối thủ)")
+                            
+                            import plotly.express as px
+                            import re
+
+                            has_date_data = False
+                            if not hotel_comments.empty:
+                                possible_date_cols = [c for c in hotel_comments.columns if any(k in c.lower() for k in ['date', 'ngày', 'ngay', 'time', 'created'])]
+                                date_col = possible_date_cols[0] if possible_date_cols else None
+                                
+                                if date_col:
+                                    hotel_comments['parsed_date'] = pd.to_datetime(hotel_comments[date_col], errors='coerce', format='mixed')
+                                    if not hotel_comments['parsed_date'].notna().any():
+                                        cleaned_date = hotel_comments[date_col].astype(str)\
+                                            .str.lower()\
+                                            .str.replace(r'tháng|thg|month', '/', regex=True)\
+                                            .str.replace(r'năm|year', '/', regex=True)\
+                                            .str.replace(r'đã đánh giá vào|ngày|reviewed', '', regex=True)
+                                        hotel_comments['parsed_date'] = pd.to_datetime(cleaned_date, errors='coerce', dayfirst=True)
+                                    
+                                    hotel_comments['Month'] = hotel_comments['parsed_date'].dt.month
+                                    if not hotel_comments['Month'].notna().any():
+                                        extracted_months = hotel_comments[date_col].astype(str).str.extract(r'(?:tháng|month|\b)\s*([1-9]|1[0-2])\b', flags=re.IGNORECASE)[0]
+                                        hotel_comments['Month'] = pd.to_numeric(extracted_months, errors='coerce')
+                                    
+                                    if hotel_comments['Month'].notna().any():
+                                        has_date_data = True
+
+                            score_cols = [c for c in hotel_comments.columns if any(k in c.lower() for k in ['score', 'điểm', 'rating', 'mark'])] if not hotel_comments.empty else []
+                            score_col_season = score_cols[0] if score_cols else None
+
+                            if has_date_data and score_col_season:
+                                hotel_comments[score_col_season] = pd.to_numeric(hotel_comments[score_col_season], errors='coerce')
+                                hotel_comments['Season'] = hotel_comments['Month'].apply(
+                                    lambda x: 'Peak' if x in [5, 6, 7] else ('Off-Peak' if x in [10, 11, 12] else 'Other')
+                                )
+                                
+                                ks_season_scores = hotel_comments.groupby('Season')[score_col_season].mean().to_dict()
+                                mean_fallback = hotel_comments[score_col_season].mean() or 0
+                                ks_peak = round(ks_season_scores.get('Peak', mean_fallback), 2)
+                                ks_off_peak = round(ks_season_scores.get('Off-Peak', mean_fallback), 2)
+                                
+                                comp_peak, comp_off_peak = 0.0, 0.0
+                                if df_comments is not None and not df_comments.empty:
+                                    comp_ids = top_competitors[col_hotel_id_info].tolist()
+                                    comp_id_col = [c for c in df_comments.columns if 'id' in c.lower()][0] if any('id' in c.lower() for c in df_comments.columns) else df_comments.columns[0]
+                                    
+                                    comp_comments = df_comments[df_comments[comp_id_col].isin(comp_ids)].copy()
+                                    comp_date_cols = [c for c in comp_comments.columns if any(k in c.lower() for k in ['date', 'ngày', 'time', 'created'])]
+                                    comp_date_col = comp_date_cols[0] if comp_date_cols else date_col
+                                    
+                                    if comp_date_col and comp_date_col in comp_comments.columns:
+                                        comp_parsed = pd.to_datetime(comp_comments[comp_date_col], errors='coerce', format='mixed')
+                                        comp_comments['Month'] = comp_parsed.dt.month
+                                        if comp_comments['Month'].isna().all():
+                                            months_ext = comp_comments[comp_date_col].astype(str).str.extract(r'(?:tháng|month|\b)\s*([1-9]|1[0-2])\b', flags=re.IGNORECASE)[0]
+                                            comp_comments['Month'] = pd.to_numeric(months_ext, errors='coerce')
+                                            
+                                        comp_comments['Score'] = pd.to_numeric(comp_comments[score_col_season], errors='coerce')
+                                        comp_comments['Season'] = comp_comments['Month'].apply(
+                                            lambda x: 'Peak' if x in [5, 6, 7] else ('Off-Peak' if x in [10, 11, 12] else 'Other')
+                                        )
+                                        comp_season_scores = comp_comments.groupby('Season')['Score'].mean().to_dict()
+                                        comp_mean_fb = comp_comments['Score'].mean() or 0
+                                        comp_peak = round(comp_season_scores.get('Peak', comp_mean_fb), 2)
+                                        comp_off_peak = round(comp_season_scores.get('Off-Peak', comp_mean_fb), 2)
+                                
+                                c_chart, c_table = st.columns([3, 2])
+                                
+                                with c_chart:
+                                    season_data = pd.DataFrame({
+                                        'Season': ['Peak', 'Off-Peak'],
+                                        selected_hotel_name: [ks_peak, ks_off_peak],
+                                        'Competitor Average': [comp_peak, comp_off_peak]
+                                    })
+                                    df_melted = season_data.melt(id_vars='Season', var_name='Type', value_name='Average Score')
+                                    
+                                    fig_season = px.bar(df_melted, x='Season', y='Average Score', color='Type', barmode='group',
+                                                        color_discrete_map={
+                                                            selected_hotel_name: '#1e4c59',
+                                                            'Competitor Average': '#eb8a1f'
+                                                        })
+                                    
+                                    valid_scores = [s for s in [ks_peak, ks_off_peak, comp_peak, comp_off_peak] if s > 0]
+                                    min_score = min(valid_scores) - 0.5 if valid_scores else 7.0
+                                    fig_season.update_layout(
+                                        yaxis=dict(range=[max(0, min_score), 10.0], gridcolor='#333333'),
+                                        paper_bgcolor='rgba(0,0,0,0)',
+                                        plot_bgcolor='rgba(0,0,0,0)',
+                                        legend_title_text=None,
+                                        legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99),
+                                        margin=dict(l=40, r=20, t=20, b=30),
+                                        font=dict(color="white")
+                                    )
+                                    st.plotly_chart(fig_season, use_container_width=True)
+                                    st.caption("Peak: Tháng 5, 6, 7  |  Off-Peak: Tháng 10, 11, 12")
+                                
+                                with c_table:
+                                    diff_peak = round(ks_peak - comp_peak, 2)
+                                    diff_off = round(ks_off_peak - comp_off_peak, 2)
+                                    
+                                    def get_status(diff):
+                                        if diff >= 0.15: return "Ahead"
+                                        elif diff <= -0.15: return "Behind"
+                                        else: return "Comparable*"
+                                    
+                                    table_season = pd.DataFrame({
+                                        "Mùa": ["Peak", "Off-Peak"],
+                                        "KS này": [ks_peak, ks_off_peak],
+                                        "Đối thủ TB": [comp_peak, comp_off_peak],
+                                        "Chênh lệch": [f"{diff_peak:+.2f}", f"{diff_off:+.2f}"],
+                                        "Trạng thái": [get_status(diff_peak), get_status(diff_off)]
+                                    })
+                                    
+                                    st.dataframe(table_season, hide_index=True, use_container_width=True)
+                                    st.caption("*ngưỡng độ lớn ±0.15 áp dụng — chênh lệch nhỏ không đủ để coi là điểm yếu thật.*")
+                            else:
+                                st.info("⚠️ Chưa đủ dữ liệu Ngày/Điểm đánh giá để so sánh mùa cao/thấp điểm với đối thủ.")
 
                         else:
                             st.warning("⚠️ Không tìm thấy biến `cosine_sim`. Hãy đảm bảo đã load/tính ma trận `cosine_sim`!")
@@ -1259,110 +1373,3 @@ elif menu == "Chủ khách sạn":
                                 st.plotly_chart(fig_group, use_container_width=True)
                             else:
                                 st.info("Không có dữ liệu loại nhóm.")
-                        
-                        # --- HÀNG 2: PHÂN TÍCH MÙA CAO/THẤP ĐIỂM ---
-                        st.divider()
-                        st.markdown("### Ví dụ minh họa — Mùa cao/thấp điểm (Bonus)")
-                        
-                        # Tự động tìm cột Score
-                        score_cols = [c for c in hotel_comments.columns if any(k in c.lower() for k in ['score', 'điểm', 'rating', 'mark'])]
-                        score_col_season = score_cols[0] if score_cols else None
-                        
-                        if has_date_data and score_col_season:
-                            hotel_comments[score_col_season] = pd.to_numeric(hotel_comments[score_col_season], errors='coerce')
-                            
-                            # Phân loại mùa
-                            if 'Month' not in hotel_comments.columns or hotel_comments['Month'].isna().all():
-                                hotel_comments['Season'] = 'Other'
-                            else:
-                                hotel_comments['Season'] = hotel_comments['Month'].apply(
-                                    lambda x: 'Peak' if x in [5, 6, 7] else ('Off-Peak' if x in [10, 11, 12] else 'Other')
-                                )
-                            
-                            ks_season_scores = hotel_comments.groupby('Season')[score_col_season].mean().to_dict()
-                            mean_fallback = hotel_comments[score_col_season].mean() or 0
-                            ks_peak = round(ks_season_scores.get('Peak', mean_fallback), 2)
-                            ks_off_peak = round(ks_season_scores.get('Off-Peak', mean_fallback), 2)
-                            
-                            # Tính cho ĐỐI THỦ TRUNG BÌNH
-                            comp_peak, comp_off_peak = 0.0, 0.0
-                            if 'df_comments' in locals() and 'top_competitors' in locals():
-                                comp_ids = top_competitors[col_hotel_id_info].tolist()
-                                comp_id_col = [c for c in df_comments.columns if 'id' in c.lower()][0] if any('id' in c.lower() for c in df_comments.columns) else df_comments.columns[0]
-                                
-                                comp_comments = df_comments[df_comments[comp_id_col].isin(comp_ids)].copy()
-                                comp_date_cols = [c for c in comp_comments.columns if any(k in c.lower() for k in ['date', 'ngày', 'time', 'created'])]
-                                comp_date_col = comp_date_cols[0] if comp_date_cols else date_col
-                                
-                                if comp_date_col and comp_date_col in comp_comments.columns:
-                                    comp_parsed = pd.to_datetime(comp_comments[comp_date_col], errors='coerce', format='mixed')
-                                    comp_comments['Month'] = comp_parsed.dt.month
-                                    if comp_comments['Month'].isna().all():
-                                        months_ext = comp_comments[comp_date_col].astype(str).str.extract(r'(?:tháng|month|\b)\s*([1-9]|1[0-2])\b', flags=re.IGNORECASE)[0]
-                                        comp_comments['Month'] = pd.to_numeric(months_ext, errors='coerce')
-                                        
-                                    comp_comments['Score'] = pd.to_numeric(comp_comments[score_col_season], errors='coerce')
-                                    comp_comments['Season'] = comp_comments['Month'].apply(
-                                        lambda x: 'Peak' if x in [5, 6, 7] else ('Off-Peak' if x in [10, 11, 12] else 'Other')
-                                    )
-                                    comp_season_scores = comp_comments.groupby('Season')['Score'].mean().to_dict()
-                                    comp_mean_fb = comp_comments['Score'].mean() or 0
-                                    comp_peak = round(comp_season_scores.get('Peak', comp_mean_fb), 2)
-                                    comp_off_peak = round(comp_season_scores.get('Off-Peak', comp_mean_fb), 2)
-                            
-                            c_chart, c_table = st.columns([3, 2])
-                            
-                            # Cột Trái: Biểu đồ Grouped Bar Mùa Vụ
-                            with c_chart:
-                                season_data = pd.DataFrame({
-                                    'Season': ['Peak', 'Off-Peak'],
-                                    selected_hotel_name: [ks_peak, ks_off_peak],
-                                    'Competitor Average': [comp_peak, comp_off_peak]
-                                })
-                                df_melted = season_data.melt(id_vars='Season', var_name='Type', value_name='Average Score')
-                                
-                                fig_season = px.bar(df_melted, x='Season', y='Average Score', color='Type', barmode='group',
-                                                    color_discrete_map={
-                                                        selected_hotel_name: '#1e4c59',
-                                                        'Competitor Average': '#eb8a1f'
-                                                    })
-                                
-                                valid_scores = [s for s in [ks_peak, ks_off_peak, comp_peak, comp_off_peak] if s > 0]
-                                min_score = min(valid_scores) - 0.5 if valid_scores else 7.0
-                                fig_season.update_layout(
-                                    yaxis=dict(range=[max(0, min_score), 10.0], gridcolor='#333333'),
-                                    paper_bgcolor='rgba(0,0,0,0)',
-                                    plot_bgcolor='rgba(0,0,0,0)',
-                                    legend_title_text=None,
-                                    legend=dict(yanchor="top", y=0.99, xanchor="right", x=0.99),
-                                    margin=dict(l=40, r=20, t=20, b=30),
-                                    font=dict(color="white")
-                                )
-                                st.plotly_chart(fig_season, use_container_width=True)
-                                st.caption("Peak: Tháng 5, 6, 7  |  Off-Peak: Tháng 10, 11, 12")
-                            
-                            # Cột Phải: Bảng Thống kê
-                            with c_table:
-                                diff_peak = round(ks_peak - comp_peak, 2)
-                                diff_off = round(ks_off_peak - comp_off_peak, 2)
-                                
-                                def get_status(diff):
-                                    if diff >= 0.15: return "Ahead"
-                                    elif diff <= -0.15: return "Behind"
-                                    else: return "Comparable*"
-                                
-                                table_season = pd.DataFrame({
-                                    "Mùa": ["Peak", "Off-Peak"],
-                                    "KS này": [ks_peak, ks_off_peak],
-                                    "Đối thủ TB": [comp_peak, comp_off_peak],
-                                    "Chênh lệch": [f"{diff_peak:+.2f}", f"{diff_off:+.2f}"],
-                                    "Trạng thái": [get_status(diff_peak), get_status(diff_off)]
-                                })
-                                
-                                st.dataframe(table_season, hide_index=True, use_container_width=True)
-                                st.caption("*ngưỡng độ lớn ±0.15 áp dụng — chênh lệch nhỏ không đủ để coi là điểm yếu thật.*")
-                                st.success("💡 **Nếu phát hiện mùa yếu thật:** hệ thống tự động trích top-5 từ khóa tích cực/tiêu cực RIÊNG của mùa đó để chỉ rõ nguyên nhân cụ thể.")
-                        else:
-                            st.warning(f"⚠️ Cần có cột Ngày & Điểm đánh giá để hiển thị mùa vụ. Tên cột nhận diện được: Ngày=`{date_col}`, Điểm=`{score_col_season}`")
-                    else:
-                        st.info("Chưa có dữ liệu bình luận để thống kê khách hàng.")
