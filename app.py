@@ -309,10 +309,10 @@ if menu == "Trang chủ":
     col2.metric(label="Lượt đánh giá", value="80,314", delta="267 chưa có review")
     col3.metric(label="Quốc tịch", value="110")
 
+    st.markdown("#### Về **Agoda**")
+    st.markdown("---")
     col_text, col_img = st.columns([1, 0.4])
     with col_text:
-        st.markdown("#### Về **Agoda**")
-        st.markdown("---")
         st.markdown("Nền tảng đặt phòng trực tuyến có trụ sở tại Singapore (2005), thuộc Booking Holdings Inc. " \
         "\nCung cấp dịch vụ đặt khách sạn, căn hộ, resort trên toàn cầu, cho phép người dùng tìm kiếm – so sánh – đặt chỗ với giá ưu đãi.")
     with col_img:
@@ -584,6 +584,7 @@ elif menu == "Khách du lịch":
         with c2:
             top_n_t1 = st.number_input("Số lượng gợi ý:", min_value=1, max_value=20, value=5, key="tab1_top_n")
 
+        # NÚT BẤM CHỈ LÀM NHIỆM VỤ TÍNH TOÁN & LƯU KẾT QUẢ VÀO BỘ NHỚ
         if st.button("🔎 Tìm khách sạn tương tự", type="primary", key="btn_tab1"):
             if selected_hotel and cosine_sim is not None:
                 # Tìm index của khách sạn được chọn
@@ -601,12 +602,21 @@ elif menu == "Khách du lịch":
                     results = df_info.iloc[hotel_indices].copy()
                     results['match_score'] = [i[1] for i in sim_scores]
                     
-                    st.success(f"Các khách sạn có phong cách/dịch vụ tương đồng với **{selected_hotel}**:")
-                    render_hotel_cards(results, key_prefix="t1")
+                    # LƯU VÀO SESSION STATE
+                    st.session_state['tab1_results'] = results
+                    st.session_state['tab1_selected_hotel'] = selected_hotel
                 else:
                     st.error("Không tìm thấy dữ liệu cho khách sạn này.")
+                    if 'tab1_results' in st.session_state: del st.session_state['tab1_results']
             else:
                 st.warning("Mô hình Cosine Similarity chưa sẵn sàng hoặc danh sách khách sạn rỗng.")
+                if 'tab1_results' in st.session_state: del st.session_state['tab1_results']
+
+        # HIỂN THỊ KẾT QUẢ TỪ BỘ NHỚ (KHÔNG NẰM TRONG IF BUTTON)
+        if 'tab1_results' in st.session_state:
+            saved_selected_hotel = st.session_state.get('tab1_selected_hotel', '')
+            st.success(f"Các khách sạn có phong cách/dịch vụ tương đồng với **{saved_selected_hotel}**:")
+            render_hotel_cards(st.session_state['tab1_results'], key_prefix="t1")
 
     # =========================================================
     # TAB 2: GỢI Ý THEO TỪ KHÓA & MÔ TẢ
@@ -715,10 +725,26 @@ elif menu == "Khách du lịch":
 
             filtered_df['match_score'] = filtered_df.apply(calculate_knn_score, axis=1)
             results = filtered_df.sort_values(by='match_score', ascending=False).head(top_n_t3)
-
             greeting = f"**{user_name_input}**" if user_name_input.strip() else ""
-            st.success(f"Xin chào {greeting}! Dưới đây là các khách sạn phù hợp nhất với nhóm khách **{nationality_option}** - **{trip_option}**:")
-            render_hotel_cards(results, key_prefix="t3")
+
+            # LƯU VÀO SESSION STATE
+            st.session_state['tab3_results'] = results
+            st.session_state['tab3_greeting'] = greeting
+            st.session_state['tab3_nat_option'] = nationality_option
+            st.session_state['tab3_trip_option'] = trip_option
+
+        # HIỂN THỊ KẾT QUẢ TỪ BỘ NHỚ
+        if 'tab3_results' in st.session_state:
+            res = st.session_state['tab3_results']
+            greet = st.session_state['tab3_greeting']
+            nat = st.session_state['tab3_nat_option']
+            trip = st.session_state['tab3_trip_option']
+            
+            if not res.empty:
+                st.success(f"Xin chào {greet}! Dưới đây là các khách sạn phù hợp nhất với nhóm khách **{nat}** - **{trip}**:")
+                render_hotel_cards(res, key_prefix="t3")
+            else:
+                st.warning("Không tìm thấy khách sạn nào phù hợp với bộ lọc hồ sơ của bạn.")
 
 # ---------------------------------------------------------
 # 7. Màn hình: CHỦ KHÁCH SẠN
