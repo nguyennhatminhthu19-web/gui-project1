@@ -177,6 +177,47 @@ def load_all_models():
 df_info, df_comments = load_all_data()
 knn_model, cosine_sim = load_all_models()
 
+# =========================================================
+# HÀM TẠO BANNER ĐỘNG (DÙNG CHO NHIỀU TRANG)
+# =========================================================
+@st.cache_data
+def get_base64_image(image_path):
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
+
+def render_banner(title, subtitle):
+    banner_path = os.path.join("Hotel", "Banner.jpg")
+    try:
+        base64_img = get_base64_image(banner_path)
+        banner_html = f"""
+<div style="
+    background-image: url('data:image/jpeg;base64,{base64_img}');
+    background-size: cover;
+    background-position: center;
+    border-radius: 15px;
+    padding: 60px 20px;
+    text-align: center;
+    position: relative;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+    margin-bottom: 30px;
+">
+<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.4); border-radius: 15px;"></div>
+<div style="position: relative; z-index: 1;">
+<h1 style="color: white; font-size: 2.5rem; font-weight: 700; margin-bottom: 10px; text-shadow: 2px 2px 5px rgba(0,0,0,0.7);">
+{title} 
+</h1>
+<p style="color: white; font-size: 1.1rem; font-weight: 500; text-shadow: 1px 1px 4px rgba(0,0,0,0.7); margin: 0;">
+{subtitle}
+</p>
+</div>
+</div>
+"""
+        st.markdown(banner_html, unsafe_allow_html=True)
+    except FileNotFoundError:
+        st.error(f"⚠️ Không tìm thấy file ảnh tại đường dẫn: {banner_path}")
+        st.title(title)
+        st.caption(subtitle)
+
 # ---------------------------------------------------------
 # 1. Cấu hình trang (Page Config)
 # ---------------------------------------------------------
@@ -234,51 +275,13 @@ st.sidebar.caption("""
 # ---------------------------------------------------------
 # 3. Màn hình: TRANG CHỦ
 # ---------------------------------------------------------
-# Hàm phụ trợ để chuyển đổi ảnh local sang base64
-def get_base64_image(image_path):
-    with open(image_path, "rb") as img_file:
-        return base64.b64encode(img_file.read()).decode()
 
 if menu == "Trang chủ":
     # Đường dẫn tới file ảnh banner
-    banner_path = os.path.join("Hotel", "Banner.jpg")
-    
-    try:
-        # Chuyển ảnh sang chuỗi base64
-        base64_img = get_base64_image(banner_path)
-        
-        # LƯU Ý QUAN TRỌNG: Viết sát lề trái từ thẻ <div> đầu tiên, không thụt đầu dòng các thẻ HTML
-        banner_html = f"""
-<div style="
-    background-image: url('data:image/jpeg;base64,{base64_img}');
-    background-size: cover;
-    background-position: center;
-    border-radius: 15px;
-    padding: 60px 20px; 
-    text-align: center;
-    position: relative;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-    margin-bottom: 30px;
-">
-<div style="position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(0, 0, 0, 0.4); border-radius: 15px;"></div>
-<div style="position: relative; z-index: 1;">
-<h1 style="color: white; font-size: 2.5rem; font-weight: 700; margin-bottom: 10px; text-shadow: 2px 2px 5px rgba(0,0,0,0.7);">
-Agoda Recommender System
-</h1>
-<p style="color: white; font-size: 1.1rem; font-weight: 500; text-shadow: 1px 1px 4px rgba(0,0,0,0.7); margin: 0;">
-Gợi ý khách sạn cá nhân hoá cho khách du lịch, phân tích kinh doanh cho chủ khách sạn
-</p>
-</div>
-</div>
-"""
-        # Hiển thị banner ra màn hình
-        st.markdown(banner_html, unsafe_allow_html=True)
-        
-    except FileNotFoundError:
-        # Dự phòng trường hợp bị sai đường dẫn hoặc không tìm thấy file ảnh
-        st.error(f"⚠️ Không tìm thấy file ảnh tại đường dẫn: {banner_path}")
-        st.title("Agoda Recommender System")
-        st.caption("Gợi ý khách sạn cá nhân hoá cho khách du lịch, phân tích kinh doanh cho chủ khách sạn")
+    render_banner(
+        title="Agoda Recommender System", 
+        subtitle="Gợi ý khách sạn cá nhân hoá cho khách du lịch, phân tích kinh doanh cho chủ khách sạn"
+    )
     
     # ---------------------------------------------------------
     # Giữ nguyên phần thống kê (Metrics) của bạn
