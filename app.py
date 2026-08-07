@@ -227,12 +227,12 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom CSS để chỉnh chữ radio menu to hơn và giãn rộng khoảng cách
+# Custom CSS để chỉnh formating cho toàn bộ sidebar
 st.markdown("""
 <style>
     /* Chỉnh kích thước chữ của Radio Options trong Sidebar */
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-        font-size: 1rem !important; /* Tăng cỡ chữ */
+        font-size: 1rem !important;
         font-weight: 400;
     }
     
@@ -241,6 +241,19 @@ st.markdown("""
         padding-top: 8px !important;
         padding-bottom: 8px !important;
         margin-bottom: 2px !important;
+    }
+
+    /* 1. ÉP KHOẢNG CÁCH CHO ĐƯỜNG KẺ NGANG (---) */
+    [data-testid="stSidebar"] hr {
+        margin-top: 10px !important;    /* Chỉnh thu hẹp khoảng cách bên trên */
+        margin-bottom: 10px !important; /* Chỉnh thu hẹp khoảng cách bên dưới */
+    }
+
+    /* 2. CLASS CSS ĐỂ CHỈNH FONT VÀ KHOẢNG CÁCH DÒNG CHO FOOTER */
+    .sidebar-footer {
+        font-size: 0.85rem !important; /* Điều chỉnh cỡ chữ tại đây */
+        line-height: 1.4 !important;   /* Điều chỉnh khoảng cách giữa các dòng (càng nhỏ càng khít) */
+        color: #7A7A7A;                /* Chỉnh màu xám cho giống với định dạng caption */
     }
 </style>
 """, unsafe_allow_html=True)
@@ -262,15 +275,20 @@ else:
     st.sidebar.caption("🔴 *Mô hình chưa sẵn sàng, vui lòng kiểm tra lại*")
 
 st.sidebar.markdown("---")
-st.sidebar.caption("""
-Đồ án tốt nghiệp Data Science - Trung tâm tin học - Trường Đại Học Khoa Học Tự Nhiên, ĐHQG-HCM
-\nProject: Recommender Systems
-\nNhóm thực hiện:
-\nNguyễn Thị Thúy Hằng  thuyhang0911@gmail.com
-\nNguyễn Nhật Minh Thư  nguyen.nhatminhthu19@gmail.com
-\nLê Ngọc Tuấn          \nlengoctuan04lkk@gmail.com
-\nGiảng viên hướng dẫn: \nCô. Khuất Thùy Phương
-""")
+# SỬ DỤNG HTML ĐỂ HIỂN THỊ TEXT CHI TIẾT
+# Việc dùng <br> giúp ngắt dòng chính xác hơn việc dùng \n trong st.caption
+st.sidebar.markdown("""
+<div class="sidebar-footer">
+    Đồ án tốt nghiệp Data Science - Trung tâm tin học - Trường Đại Học Khoa Học Tự Nhiên, ĐHQG-HCM<br><br>
+    <b>Project:</b> Recommender Systems<br><br>
+    <b>Nhóm thực hiện:</b><br>
+    Nguyễn Thị Thúy Hằng (thuyhang0911@gmail.com)<br>
+    Nguyễn Nhật Minh Thư (nguyen.nhatminhthu19@gmail.com)<br>
+    Lê Ngọc Tuấn (lengoctuan04lkk@gmail.com)<br><br>
+    <b>Giảng viên hướng dẫn:</b><br>
+    Cô Khuất Thùy Phương
+</div>
+""", unsafe_allow_html=True)
 
 # ---------------------------------------------------------
 # 3. Màn hình: TRANG CHỦ
@@ -294,7 +312,8 @@ if menu == "Trang chủ":
     st.markdown("#### Về **Agoda**")
     st.markdown("---")
     st.markdown("Nền tảng đặt phòng trực tuyến có trụ sở tại Singapore (2005), thuộc Booking Holdings Inc. " \
-    "Cung cấp dịch vụ đặt khách sạn, căn hộ, resort trên toàn cầu, cho phép người dùng tìm kiếm – so sánh – đặt chỗ với giá ưu đãi.")
+    "\nCung cấp dịch vụ đặt khách sạn, căn hộ, resort trên toàn cầu, cho phép người dùng tìm kiếm – so sánh – đặt chỗ với giá ưu đãi.")
+    st.image("Agoda_transparent_logo.png", width=250)
     st.info("ℹ️ Chọn vai trò của bạn ở menu bên trái: **khách du lịch** hoặc **chủ khách sạn**.")
 
 # ---------------------------------------------------------
