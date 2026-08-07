@@ -279,7 +279,7 @@ st.sidebar.markdown("---")
 # Việc dùng <br> giúp ngắt dòng chính xác hơn việc dùng \n trong st.caption
 st.sidebar.markdown("""
 <div class="sidebar-footer">
-    Đồ án tốt nghiệp Data Science - Trung tâm tin học - Trường Đại Học Khoa Học Tự Nhiên, ĐHQG-HCM<br><br>
+    ĐATN Data Science - Trung tâm tin học - Trường ĐHKHTN, ĐHQG-HCM<br><br>
     <b>Project:</b> Recommender Systems<br><br>
     <b>Nhóm thực hiện:</b><br>
     Nguyễn Thị Thúy Hằng<br>thuyhang0911@gmail.com<br>
@@ -309,11 +309,14 @@ if menu == "Trang chủ":
     col2.metric(label="Lượt đánh giá", value="80,314", delta="267 chưa có review")
     col3.metric(label="Quốc tịch", value="110")
 
-    st.markdown("#### Về **Agoda**")
-    st.markdown("---")
-    st.markdown("Nền tảng đặt phòng trực tuyến có trụ sở tại Singapore (2005), thuộc Booking Holdings Inc. " \
-    "\nCung cấp dịch vụ đặt khách sạn, căn hộ, resort trên toàn cầu, cho phép người dùng tìm kiếm – so sánh – đặt chỗ với giá ưu đãi.")
-    st.image("Agoda_transparent_logo.png", width=250)
+    col_text, col_img = st.columns([1, 0.4])
+    with col_text:
+        st.markdown("#### Về **Agoda**")
+        st.markdown("---")
+        st.markdown("Nền tảng đặt phòng trực tuyến có trụ sở tại Singapore (2005), thuộc Booking Holdings Inc. " \
+        "\nCung cấp dịch vụ đặt khách sạn, căn hộ, resort trên toàn cầu, cho phép người dùng tìm kiếm – so sánh – đặt chỗ với giá ưu đãi.")
+    with col_img:
+        st.image("Agoda_transparent_logo.png", width=250)
     st.info("ℹ️ Chọn vai trò của bạn ở menu bên trái: **khách du lịch** hoặc **chủ khách sạn**.")
 
 # ---------------------------------------------------------
