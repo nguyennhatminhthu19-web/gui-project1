@@ -494,7 +494,7 @@ elif menu == "Khách du lịch":
             if st.button("✅ Xác nhận đặt phòng", type="primary", use_container_width=True):
                 st.success("Đã ghi nhận! Bộ phận chăm sóc khách hàng sẽ liên hệ với bạn sớm nhất.")
 
-    # 3. Hàm trợ giúp hiển thị danh sách khách sạn (Dùng Callback chống văng)
+    # 3. Hàm trợ giúp hiển thị danh sách khách sạn (Đã cố định ảnh cho từng KS)
     def render_hotel_cards(results_df, key_prefix="card"):
         if results_df.empty:
             st.warning("⚠️ Không tìm thấy khách sạn phù hợp với tiêu chí của bạn.")
@@ -516,9 +516,11 @@ elif menu == "Khách du lịch":
             match_pct = round(60.0 + (raw_score * 38.0), 1) if raw_score <= 1.0 else round(raw_score, 1)
             if match_pct > 98.5: match_pct = 98.5
 
-            # --- BƯỚC MỚI: TẠO ĐƯỜNG DẪN ẢNH RANDOM TỪ H1.jpg -> H20.jpg ---
-            random_img_id = random.randint(1, 20)
-            img_path = os.path.join("Hotel", f"H{random_img_id}.jpg")
+            # =========================================================
+            # CỐ ĐỊNH ẢNH: Dùng tên khách sạn làm Seed để ảnh không bị đổi khi rerun
+            # =========================================================
+            img_id = random.Random(hotel_name).randint(1, 20)
+            img_path = os.path.join("Hotel", f"H{img_id}.jpg")
 
             with st.container(border=True):
                 # Thay đổi tỷ lệ cột: Thêm 1 cột bên trái để chứa ảnh
@@ -529,20 +531,16 @@ elif menu == "Khách du lịch":
                     try:
                         st.image(img_path, use_container_width=True)
                     except FileNotFoundError:
-                        # Báo lỗi nhẹ nhàng nếu lỡ thiếu file ảnh trong thư mục
                         st.caption(f"⚠️ Thiếu file {img_path}")
                 
                 # Cột 2: Thông tin khách sạn
                 with c_info:
-                    # ==========================================
-                    # BÍ QUYẾT Ở ĐÂY: Dùng on_click và args
-                    # ==========================================
                     st.button(
-                        label=f"🏨 {hotel_name}", 
-                        key=f"{key_prefix}_name_btn_{idx}", 
+                        label=f"🏨 {hotel_name}",
+                        key=f"{key_prefix}_name_btn_{idx}",
                         use_container_width=True,
-                        on_click=show_hotel_modal,       # Gọi hàm ngay khi click
-                        args=(row.to_dict(),)            # Truyền dữ liệu khách sạn vào hàm
+                        on_click=show_hotel_modal,
+                        args=(row.to_dict(),)
                     )
                     
                     st.write(f"📍 **Địa chỉ:** {address}")
@@ -550,10 +548,10 @@ elif menu == "Khách du lịch":
                     
                     with st.expander("📖 Xem mô tả tóm tắt"):
                         st.write(desc_snippet)
-                    
+                
                 # Cột 3: Điểm phù hợp
                 with c_score:
-                    st.write("") 
+                    st.write("")
                     st.caption("Độ phù hợp")
                     st.markdown(f"<h2 style='color: #FF4B4B; margin:0;'>{match_pct}%</h2>", unsafe_allow_html=True)
 
