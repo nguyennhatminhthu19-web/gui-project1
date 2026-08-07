@@ -232,15 +232,15 @@ st.markdown("""
 <style>
     /* Chỉnh kích thước chữ của Radio Options trong Sidebar */
     [data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
-        font-size: 1.15rem !important; /* Tăng cỡ chữ */
-        font-weight: 500;
+        font-size: 1rem !important; /* Tăng cỡ chữ */
+        font-weight: 400;
     }
     
     /* Tăng khoảng cách (padding/margin) giữa các lựa chọn Menu */
     [data-testid="stSidebar"] div[role="radiogroup"] > label {
-        padding-top: 10px !important;
-        padding-bottom: 10px !important;
-        margin-bottom: 4px !important;
+        padding-top: 8px !important;
+        padding-bottom: 8px !important;
+        margin-bottom: 2px !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -290,7 +290,11 @@ if menu == "Trang chủ":
     col1.metric(label="Khách sạn", value="740")
     col2.metric(label="Lượt đánh giá", value="80,314", delta="267 chưa có review")
     col3.metric(label="Quốc tịch", value="110")
-    
+
+    st.markdown("#### Về **Agoda**")
+    st.markdown("---")
+    st.markdown("Nền tảng đặt phòng trực tuyến có trụ sở tại Singapore (2005), thuộc Booking Holdings Inc. " \
+    "Cung cấp dịch vụ đặt khách sạn, căn hộ, resort trên toàn cầu, cho phép người dùng tìm kiếm – so sánh – đặt chỗ với giá ưu đãi.")
     st.info("ℹ️ Chọn vai trò của bạn ở menu bên trái: **khách du lịch** hoặc **chủ khách sạn**.")
 
 # ---------------------------------------------------------
@@ -301,7 +305,7 @@ elif menu == "Business problem":
         title="Business problem", 
         subtitle="Agoda chưa có hệ thống Recommendation System hỗ trợ người dùng nhanh chóng chọn nơi lưu trú phù hợp"
     )
-    st.caption("Chúng tôi xây dựng 2 mô hình gợi ý khách sạn: Content-based và Collaborative, đồng thời cung cấp insight cho chủ khách sạn")
+    st.markdown("Chúng tôi xây dựng 2 mô hình gợi ý khách sạn: Content-based và Collaborative, đồng thời cung cấp insight cho chủ khách sạn")
 
     # Gợi ý theo nội dung (Content-based)
     with st.expander("📄 Content-based cho **Chủ khách sạn**", expanded=True):
