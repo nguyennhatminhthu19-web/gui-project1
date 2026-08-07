@@ -264,7 +264,6 @@ st.markdown("""
 st.sidebar.title("🏨 Hotel Recommender")
 
 menu = st.sidebar.radio(
-    "Menu điều hướng",
     ["Trang chủ", "Business problem", "Phân công nhóm", "Khách du lịch", "Chủ khách sạn"]
 )
 
@@ -282,9 +281,9 @@ st.sidebar.markdown("""
     Đồ án tốt nghiệp Data Science - Trung tâm tin học - Trường Đại Học Khoa Học Tự Nhiên, ĐHQG-HCM<br><br>
     <b>Project:</b> Recommender Systems<br><br>
     <b>Nhóm thực hiện:</b><br>
-    Nguyễn Thị Thúy Hằng (thuyhang0911@gmail.com)<br>
-    Nguyễn Nhật Minh Thư (nguyen.nhatminhthu19@gmail.com)<br>
-    Lê Ngọc Tuấn (lengoctuan04lkk@gmail.com)<br><br>
+    Nguyễn Thị Thúy Hằng<br>thuyhang0911@gmail.com<br>
+    Nguyễn Nhật Minh Thư<br>nguyen.nhatminhthu19@gmail.com<br>
+    Lê Ngọc Tuấn<br>lengoctuan04lkk@gmail.com<br><br>
     <b>Giảng viên hướng dẫn:</b><br>
     Cô Khuất Thùy Phương
 </div>
