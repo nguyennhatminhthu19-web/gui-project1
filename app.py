@@ -297,8 +297,10 @@ if menu == "Trang chủ":
 # 4. Màn hình: BUSINESS PROBLEM
 # ---------------------------------------------------------
 elif menu == "Business problem":
-    st.title("Business problem")
-    st.caption("Agoda chưa có hệ thống Recommendation System hỗ trợ người dùng nhanh chóng chọn nơi lưu trú phù hợp")
+    render_banner(
+        title="Business problem", 
+        subtitle="Agoda chưa có hệ thống Recommendation System hỗ trợ người dùng nhanh chóng chọn nơi lưu trú phù hợp"
+    )
     st.caption("Chúng tôi xây dựng 2 mô hình gợi ý khách sạn: Content-based và Collaborative, đồng thời cung cấp insight cho chủ khách sạn")
 
     # Gợi ý theo nội dung (Content-based)
@@ -334,14 +336,16 @@ elif menu == "Business problem":
             st.image("rmse_testing.png", caption="So sánh RMSE giữa các mô hình Collaborative (ALS, KNNWithMeans)")
 
     with st.expander("📊 Insight cho chủ khách sạn"):
-        st.write("Tổng quan khách sạn, So sánh điểm, Benchmark đối thủ, Phân tích review")
-        st.write("pandas · matplotlib/seaborn · wordcloud")
+        st.image("business_insights.png", caption="Nội dung insight cho chủ khách sạn")
 
 # ---------------------------------------------------------
 # 5. Màn hình: PHÂN CÔNG NHÓM
 # ---------------------------------------------------------
 elif menu == "Phân công nhóm":
-    st.title("Phân công nhóm")
+    render_banner(
+            title="Phân công nhóm", 
+            subtitle="Thông tin các thành viên thực hiện dự án và phân công nhiệm vụ"
+        )
     
     df_team = pd.DataFrame({
         "Thành viên": ["Nguyễn Thị Thúy Hằng", "Lê Ngọc Tuấn", "Nguyễn Nhật Minh Thư"],
@@ -530,13 +534,15 @@ elif menu == "Khách du lịch":
     # ---------------------------------------------------------
     # 4. Giao diện chính với 3 Tabs
     # ---------------------------------------------------------
-    st.title("🧳 Khám Phá & Đặt Phòng Khách Sạn")
-    st.caption("Tìm kiếm khách sạn hoàn hảo cho chuyến đi của bạn thông qua các mô hình AI gợi ý.")
+    render_banner(
+            title="🧳 Khám Phá & Đặt Phòng Khách Sạn", 
+            subtitle="Tìm kiếm khách sạn hoàn hảo cho chuyến đi của bạn thông qua các mô hình AI gợi ý."
+        )
 
     tab1, tab2, tab3 = st.tabs([
         "🏨 Theo Khách Sạn Tương Đồng", 
         "🔍 Theo Từ Khóa & Mô Tả", 
-        "👤 Gợi Ý Theo Hồ Sơ (KNN)"
+        "👤 Gợi Ý Theo Hồ Sơ"
     ])
 
     # =========================================================
@@ -617,8 +623,6 @@ elif menu == "Khách du lịch":
 
         # =================================================
         # PHẦN 2: HIỂN THỊ KẾT QUẢ & NÚT BẤM
-        # ⚠️ LƯU Ý: Chữ 'if' dưới đây phải nằm ngang hàng với chữ 'if st.button' phía trên!
-        # Không được để thụt lề lọt vào trong.
         # =================================================
         if 'tab2_results' in st.session_state:
             results = st.session_state['tab2_results']
@@ -632,7 +636,7 @@ elif menu == "Khách du lịch":
     # TAB 3: GỢI Ý DỰA TRÊN HỒ SƠ & BỘ LỌC CHI TIẾT (KNN)
     # =========================================================
     with tab3:
-        st.subheader("Lọc theo thông tin du khách & Mô hình KNN")
+        st.subheader("Lọc theo thông tin du khách")
         
         try:
             unique_nats = df_comments['Nationality'].dropna().astype(str).str.strip().unique()
@@ -694,7 +698,10 @@ elif menu == "Khách du lịch":
 # 7. Màn hình: CHỦ KHÁCH SẠN
 # ---------------------------------------------------------
 elif menu == "Chủ khách sạn":
-    st.title("📊 Phân tích & Insight dành cho Chủ Khách Sạn")
+    render_banner(
+                title="📊 Phân tích & Insight dành cho Chủ Khách Sạn", 
+                subtitle="Xem tổng quan, benchmark đối thủ, phân tích review và các chỉ số kinh doanh của khách sạn bạn quản lý."
+            )
 
     # =========================================================
     # 0. KHỐI ĐĂNG NHẬP (LOG IN)
