@@ -916,6 +916,7 @@ elif menu == "Chủ khách sạn":
                     fig_radar.update_layout(
                         polar=dict(
                             radialaxis=dict(
+                                bgcolor='transparent',
                                 visible=True,
                                 range=[0, 10], # Khoảng điểm từ 0 đến 10
                                 gridcolor='#333333',
