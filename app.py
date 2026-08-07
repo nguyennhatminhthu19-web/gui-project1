@@ -915,7 +915,7 @@ elif menu == "Chủ khách sạn":
                     # Căn chỉnh giao diện biểu đồ (Tương thích giao diện Darkmode)
                     fig_radar.update_layout(
                         polar=dict(
-                            bgcolor='transparent',
+                            bgcolor='rgba(0,0,0,0)',
                             radialaxis=dict(
                                 visible=True,
                                 range=[0, 10], # Khoảng điểm từ 0 đến 10
