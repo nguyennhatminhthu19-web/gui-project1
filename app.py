@@ -1160,18 +1160,34 @@ elif menu == "Chủ khách sạn":
                             b1.metric("Điểm khách sạn của bạn", f"{score_val}/10")
                             b2.metric("Điểm TB Top 5 đối thủ", f"{comp_avg_score}/10", delta=f"{diff_score:+0.2f} điểm")
                             b3.metric("Độ tương đồng trung bình", f"{comp_avg_sim}")
+
                             st.markdown("---")
                             st.markdown("#### 🏆 Danh sách 5 đối thủ cạnh tranh trực tiếp")
+                            
+                            # 1. Khởi tạo danh sách các cột sẽ hiển thị
                             cols_to_show = [col_hotel_name]
                             if 'Star_Rating' in top_competitors.columns:
                                 cols_to_show.append('Star_Rating')
                             if score_col and score_col in top_competitors.columns:
                                 cols_to_show.append(score_col)
                             cols_to_show.append('Cosine_Similarity')
-                            if 'Hotel_Address' in top_competitors.columns:
-                                cols_to_show.append('Hotel_Address')
-                            st.dataframe(top_competitors[cols_to_show], use_container_width=True, hide_index=True)
 
+                            # 2. Tự động lấy các cột điểm tiêu chí chi tiết
+                            # Ưu tiên lấy từ biến criteria ở Tab 1 (nếu có)
+                            if 'criteria' in globals() and isinstance(criteria, list):
+                                for crit in criteria:
+                                    if crit in top_competitors.columns and crit not in cols_to_show:
+                                        cols_to_show.append(crit)
+
+                            # Quét thêm danh sách tiêu chí phổ biến phòng trường hợp chưa khai báo biến criteria
+                            possible_criteria = ['Cleanliness', 'Service', 'Location', 'Facilities', 'Value_for_money', 'Comfort', 'Staff']
+                            for crit in possible_criteria:
+                                if crit in top_competitors.columns and crit not in cols_to_show:
+                                    cols_to_show.append(crit)
+
+                            # 3. Hiển thị bảng (Đã bỏ cột Hotel_Address)
+                            st.dataframe(top_competitors[cols_to_show], use_container_width=True, hide_index=True)
+                            
                             # =========================================================
                             # PHẦN MỚI CHUYỂN SANG: PHÂN TÍCH MÙA CAO/THẤP ĐIỂM
                             # =========================================================
