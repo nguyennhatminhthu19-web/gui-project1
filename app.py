@@ -893,21 +893,14 @@ elif menu == "Chủ khách sạn":
                         has_date_data = False
                         
                         if date_col:
-                            # =========================================================
-                            # BÊ NGUYÊN ĐOẠN CODE GỐC CỦA BẠN VÀO ĐÂY
-                            # Ví dụ như đoạn thay thế chuỗi bằng regex bạn đã làm:
-                            cleaned_date = hotel_comments[date_col].astype(str)\
-                                .str.lower()\
-                                .str.replace(r'tháng|thg|month', '/', regex=True)\
-                                .str.replace(r'năm|year', '/', regex=True)\
-                                .str.replace(r'đã đánh giá vào|ngày|reviewed', '', regex=True)
+                        # DÙNG REGEX BÓC TRỰC TIẾP NĂM (Ví dụ: tìm cụm 2022, 2023, 2024 trong chuỗi)
+                        # Bỏ qua hoàn toàn việc thay thế chữ "ngày/tháng/năm" hay ép kiểu pd.to_datetime
+                            extracted_years = hotel_comments[date_col].astype(str).str.extract(r'((?:19|20)\d{2})')[0]
                             
-                            # Gán lại vào cột theo đúng code cũ của bạn
-                            hotel_comments['parsed_date'] = pd.to_datetime(cleaned_date, errors='coerce')
-                            hotel_comments['Year'] = hotel_comments['parsed_date'].dt.year
-                            # =========================================================
-
-                            # Kiểm tra xem sau khi chạy code của bạn, đã có dữ liệu năm chưa
+                            # Ép về kiểu số
+                            hotel_comments['Year'] = pd.to_numeric(extracted_years, errors='coerce')
+                            
+                            # Kiểm tra xem có dữ liệu năm hợp lệ không
                             if hotel_comments['Year'].notna().any():
                                 has_date_data = True
 
