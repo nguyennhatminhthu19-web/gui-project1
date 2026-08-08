@@ -882,30 +882,57 @@ elif menu == "Chủ khách sạn":
                 # THỐNG KÊ KHÁCH HÀNG TAB
                 with tab3:
                     st.subheader("👥 Phân tích Tệp Khách Hàng & Tính Mùa Vụ")
+                    
+                    import plotly.express as px
+                    
                     if not hotel_comments.empty:
-                        possible_date_cols = [c for c in hotel_comments.columns if any(k in c.lower() for k in ['date', 'ngày', 'ngay', 'time', 'created'])]
+                        # 1. Tìm đúng cột chứa thời gian (Giữ nguyên logic của bạn)
+                        possible_date_cols = [c for c in hotel_comments.columns if any(k in c.lower() for k in ['date', 'ngày', 'ngay', 'time', 'created', 'review_date'])]
                         date_col = possible_date_cols[0] if possible_date_cols else None
+                        
                         has_date_data = False
                         
                         if date_col:
-                            hotel_comments['parsed_date'] = pd.to_datetime(hotel_comments[date_col], errors='coerce', format='mixed')
+                            # =========================================================
+                            # BÊ NGUYÊN ĐOẠN CODE GỐC CỦA BẠN VÀO ĐÂY
+                            # Ví dụ như đoạn thay thế chuỗi bằng regex bạn đã làm:
+                            cleaned_date = hotel_comments[date_col].astype(str)\
+                                .str.lower()\
+                                .str.replace(r'tháng|thg|month', '/', regex=True)\
+                                .str.replace(r'năm|year', '/', regex=True)\
+                                .str.replace(r'đã đánh giá vào|ngày|reviewed', '', regex=True)
+                            
+                            # Gán lại vào cột theo đúng code cũ của bạn
+                            hotel_comments['parsed_date'] = pd.to_datetime(cleaned_date, errors='coerce')
                             hotel_comments['Year'] = hotel_comments['parsed_date'].dt.year
-                            hotel_comments['Month'] = hotel_comments['parsed_date'].dt.month
+                            # =========================================================
+
+                            # Kiểm tra xem sau khi chạy code của bạn, đã có dữ liệu năm chưa
                             if hotel_comments['Year'].notna().any():
                                 has_date_data = True
-                                
+
+                        # --- HIỂN THỊ BIỂU ĐỒ ---
                         c1, c2, c3 = st.columns(3)
+                        
                         with c1:
                             st.markdown("<p style='text-align: center; font-weight: bold;'>Reviews per Year</p>", unsafe_allow_html=True)
                             if has_date_data:
+                                # Code vẽ biểu đồ đường theo dữ liệu đã parse thành công của bạn
                                 yearly_counts = hotel_comments['Year'].dropna().astype(int).value_counts().sort_index().reset_index()
                                 yearly_counts.columns = ['Year', 'Count']
+                                
                                 fig_year = px.line(yearly_counts, x='Year', y='Count', markers=True)
                                 fig_year.update_traces(line_color='#eb891a', marker=dict(color='#eb891a', size=8))
-                                fig_year.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font=dict(color="white"))
+                                fig_year.update_layout(
+                                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                                    margin=dict(l=30, r=20, t=20, b=30), font=dict(color="white")
+                                )
                                 st.plotly_chart(fig_year, use_container_width=True)
                             else:
-                                st.info("Không có dữ liệu thời gian.")
+                                st.warning("⚠️ Không tìm thấy dữ liệu thời gian.")
+
+                        # Các cột c2 (Quốc tịch) và c3 (Loại nhóm) giữ nguyên như cũ...
+                        # ...
                                 
                         with c2:
                             st.markdown("<p style='text-align: center; font-weight: bold;'>Top Nationalities</p>", unsafe_allow_html=True)
